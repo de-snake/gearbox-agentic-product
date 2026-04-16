@@ -32,22 +32,35 @@ Some fields appear in both snapshot and history — the agent needs the current 
 ## Architecture overview
 
 ```text
-Agent ──→ api.gearbox.finance (SDK) ──→ on-chain + backend
+Agent ──→ MCP Server ──→ Gearbox SDK ──→ On-chain RPC
+Frontend ─────────────→ Gearbox SDK ──→ Backend API
 ```
 
-**Agent pipeline** (investment firm analogy — see ../synthesis/staged-agent-architecture.md for full design):
+The current canonical runtime structure is the same one used in the latest developer docs and the updated staged-agent architecture.
 
 ```text
-Scout ──shortlist──→ Analyst ──memos──→ Committee ──allocation──→ Exec Desk ──receipts──→ Ops
-  ↑                                                                                       |
-  └───────────────────────────── alerts ──────────────────────────────────────────────────┘
+Discover → Analyze → Propose → Preview → Execute → Monitor
+             ↑                      ↓ fail
+             └──── monitor-triggered review ────┘
 ```
 
-Six information stages: **Discover → Evaluate → Propose → Preview → Execute → Monitor**.
+Six information stages: **Discover → Analyze → Propose → Preview → Execute → Monitor**.
 
-Each stage acts as a compression layer. The scout doesn't dump 50 pool records on the analyst — it passes a ranked shortlist of 3–5 with a sentence each on why. The analyst doesn't dump 90-day price history on the committee — it passes computed facts with evidence (see ../synthesis/memo-standard.md).
+This backend handoff follows that loop.
 
-This document covers the **API data requirements** for each stage. The handoff contracts (what each stage receives and passes forward) are included to show WHY each field matters at a system level.
+- Agents access the system through MCP tools.
+- Frontends use the same SDK directly.
+- Both paths consume the same underlying domain types.
+- On-chain RPC provides live state, transaction building, and simulation.
+- Backend API provides history, cached metrics, and metadata.
+
+A useful design principle from the latest docs is: **one type, one tool, one component**.
+
+- one SDK type powers the integration surface
+- the same type can be exposed as an MCP tool result
+- the same type can be rendered for humans in UI
+
+This document covers the **API data requirements** needed to support that loop. The handoff contracts included below show why each field matters at a system level, not only at a single decision point.
 
 **API surfaces:**
 
@@ -56,7 +69,7 @@ This document covers the **API data requirements** for each stage. The handoff c
 
 ### Curator Profile (standalone endpoint)
 
-Curator data is shared across pools and CMs. A standalone endpoint avoids duplication and lets the analyst build a trust model once.
+Curator data is shared across pools and CMs. A standalone endpoint avoids duplication and lets the agent build a trust model once.
 
 | Field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
@@ -86,7 +99,7 @@ interface AgentTask {
 }
 ```
 
-The agent arrives with a category (USD = stablecoin strategies, ETH = ETH-correlated, BTC = BTC-correlated), not a specific token. This feeds the Scout/Discover stage as input.
+The agent arrives with a category (USD = stablecoin strategies, ETH = ETH-correlated, BTC = BTC-correlated), not a specific token. This feeds the Discover stage as input.
 
 ---
 
@@ -102,7 +115,7 @@ The agent arrives with a category (USD = stablecoin strategies, ETH = ETH-correl
 | Underlying token | "Do I have this token?" — primary filter, skip if no | snapshot | ? |
 | LP APY (total) | "Is the yield worth looking at?" — if below agent's floor, skip | snapshot (computed) | ? |
 | Pool TVL (in underlying token) | "Is this pool big enough to matter?" — small pool = concentration risk, skip | snapshot | ? |
-| Pool paused | "Is this pool operational?" — if paused, skip entirely. No point doing DD on a paused pool. | snapshot | ? |
+| Pool paused | "Is this pool operational?" — if paused, skip entirely. No point doing analysis on a paused pool. | snapshot | ? |
 
 ---
 
@@ -120,7 +133,7 @@ The agent arrives with a category (USD = stablecoin strategies, ETH = ETH-correl
 | Borrowable liquidity | "Is there room for my position?" — zero = skip | snapshot | ? |
 | Min/max debt | "Does my position size fit?" — skip if outside range | snapshot | ? |
 | Net APY estimate | "Is this directionally profitable?" — coarse filter: strategy yield x leverage - borrow cost | snapshot (computed) | ? |
-| Facade paused | "Can I actually open a position?" — if paused, skip entirely. No point doing DD. | snapshot | ? |
+| Facade paused | "Can I actually open a position?" — if paused, skip entirely. No point doing analysis. | snapshot | ? |
 | Strategy key | Unique identifier: `[chain_id, cm_address, collateral_address]`. The agent uses this to reference a specific strategy across all subsequent stages. | snapshot | ? |
 | Availability | `"Permissionless"` or `"KYC'd"` — if KYC'd and the agent can't meet the requirement, skip. | snapshot | ? |
 | Points programs | `Array<{ program_name, multiplier }>` — informational only. Points have no guaranteed economic value; the agent notes them but does not factor them into yield calculations. | snapshot | ? |
@@ -128,7 +141,7 @@ The agent arrives with a category (USD = stablecoin strategies, ETH = ETH-correl
 
 ### Cross-cutting discovery filter: KYC gating
 
-Both LP and CA agents hit the same gating question before any due diligence happens. This is a hard binary filter — if the agent cannot pass KYC, everything downstream is irrelevant.
+Both LP and CA agents hit the same gating question before any analysis happens. This is a hard binary filter — if the agent cannot pass KYC, everything downstream is irrelevant.
 
 #### LP discovery extension
 
@@ -149,9 +162,9 @@ Both LP and CA agents hit the same gating question before any due diligence happ
 
 **Why APY is computed differently:** LP APY = pool supply rate + incentives. CA APY = (strategy base yield x leverage) - borrow cost - fees. These are fundamentally different calculations.
 
-### Handoff: Discover → Evaluate (Shortlist)
+### Handoff: Discover → Analyze (Shortlist)
 
-Both LP and CA discovery produce a compressed shortlist that feeds the Analyst stage:
+Both LP and CA discovery produce a compressed shortlist that feeds the Analyze stage:
 
 ```typescript
 interface Shortlist {
@@ -167,13 +180,13 @@ interface Shortlist {
 }
 ```
 
-Compression: 50 pools/strategies → 3–5 candidates. Each candidate has one score (APY), one size metric (TVL), and a reason. Everything else is discarded. The analyst stage uses this shortlist to decide where to do deep DD.
+Compression: 50 pools/strategies → 3–5 candidates. Each candidate has one score (APY), one size metric (TVL), and a reason. Everything else is discarded. The Analyze stage uses this shortlist to decide where to do deep analysis.
 
 ---
 
-## Stage 2a: Evaluate — LP Due Diligence
+## Stage 2a: Analyze — LP Due Diligence
 
-**What happens:** LP agent has narrowed to 1-3 candidate pools. Deep evaluation before depositing.
+**What happens:** LP agent has narrowed to 1–3 candidate pools. Deep analysis before depositing.
 
 The LP has no health factor, no liquidation risk, no leverage. Their risks are: yield decay, exit liquidity drying up, bad debt socialization, and silent exposure changes by curators.
 
@@ -231,7 +244,7 @@ The LP's existing exposure chain analysis (pool → CMs → tokens) covers gener
 
 | Field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
-| Has RWA collateral | "Does this CM allow tokenized securities?" — binary flag. If yes, the LP needs to assess the three RWA-specific loss vectors below. If no, standard DD is sufficient. | snapshot | ? |
+| Has RWA collateral | "Does this CM allow tokenized securities?" — binary flag. If yes, the LP needs to assess the three RWA-specific loss vectors below. If no, standard analysis is sufficient. | snapshot | ? |
 | Frozen accounts count | "How many accounts in this CM are currently frozen?" — frozen accounts can't be liquidated. Each one is a potential bad debt source. Zero = no freeze risk right now. Non-zero = the LP checks: what's the total debt in frozen accounts vs the pool's insurance fund? | snapshot | ? |
 | Frozen accounts total debt | "How much debt is locked in frozen positions?" — the actual exposure. If this exceeds the insurance fund, the LP bears the excess as potential socialized loss. | snapshot | ? |
 | Whitelisted liquidator count | "How many liquidators can actually liquidate RWA positions?" — proxy for liquidation speed. Standard DeFi tokens: anyone can liquidate. RWA tokens: only whitelisted addresses. If the count is low (e.g., < 5), liquidation may be slow, increasing bad debt risk. | snapshot | ? |
@@ -281,9 +294,9 @@ The LP cares about changes that widen their risk surface: new risky collateral a
 
 ---
 
-## Stage 2b: Evaluate — CA Due Diligence
+## Stage 2b: Analyze — CA Due Diligence
 
-**What happens:** CA agent has narrowed to 1-3 candidate strategies. Deep evaluation before opening a leveraged position.
+**What happens:** CA agent has narrowed to 1–3 candidate strategies. Deep analysis before opening a leveraged position.
 
 Each field includes the agent's decision story: what question is being answered, what action follows from the answer.
 
@@ -371,7 +384,7 @@ The existing Q2-CA covers generic collateral safety (LT, oracle, exit feasibilit
 
 | Field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
-| Whitelisted liquidator count | "If I get liquidated, who can actually execute it?" — same field as LP DD but from the CA perspective. Few liquidators = the agent may sit in a liquidatable state longer, accumulating more bad debt (worse remaining funds after liquidation). | snapshot | ? |
+| Whitelisted liquidator count | "If I get liquidated, who can actually execute it?" — same field as LP analysis, but from the CA perspective. Few liquidators = the agent may sit in a liquidatable state longer, accumulating more bad debt (worse remaining funds after liquidation). | snapshot | ? |
 | Redemption windows | "When can I actually redeem the underlying asset for cash?" — some RWA tokens only allow redemption during specific windows (e.g., month-end). Outside the window, the only exit is secondary market (if any). The agent plans position exits around these windows. | snapshot | ? |
 | Secondary market liquidity | "Can I sell this token without redemption?" — some RWA tokens trade on DEXes or OTC. If secondary market exists, exit is possible anytime (with price impact). If no secondary market, the agent is locked to redemption windows. | snapshot | ? |
 
@@ -400,132 +413,152 @@ The existing Q2-CA covers generic collateral safety (LT, oracle, exit feasibilit
 | Parameter change log (CM-level) | "Has the curator been active?" — recent LT reductions = the agent's HF could drop again. Recent token forbids = exit routes may shrink. No changes in 6 months = stable. Frequent changes = the agent must monitor more actively. | event log | ? |
 | Pending governance changes | "What's about to change for my strategy?" — same as LP Q5: queued Safe TX / timelock transactions. `Array<{ description, expected_execution, parameters }>`. The agent checks: is an LT reduction coming? A token forbid? An IRM change that would spike borrow costs? | snapshot | ? |
 
-### Handoff: Evaluate → Propose (Research Memo)
+### Handoff: Analyze → Propose (AnalyzedOpportunity)
 
-The analyst produces a structured Research Memo per candidate — the critical compression layer. Full standard defined in ../synthesis/memo-standard.md. Key principle: evidence-backed compression, never interpretive labels.
+The Analyze stage produces a ranked `AnalyzedOpportunity[]` set. `../synthesis/memo-standard.md` remains the detailed reference for how this compression can be serialized, but the canonical handoff content is now aligned to the latest agent-loop structure.
 
 ```typescript
-interface ResearchMemo {
-    candidate_id: string,
-    candidate_name: string,
+interface AnalyzedOpportunity {
+    id: string,
     type: "LP" | "CA",
-    recommendation: "strong" | "acceptable" | "risky" | "reject",
-    one_liner: string,
-    profit: {
-        headline_apy: number,
-        apy_organic: number,
-        apy_incentive: number,
-        apy_trend: "stable" | "growing" | "declining",
-        yield_sustainability: string,    // evidence: "organic rate alone meets 4% floor"
-        entry_cost_bps: number,          // CA only
-        breakeven_days: number,          // CA only
+    final_score: number,
+    adjusted_apy: number,
+    overall_risk: number,
+    profitability_summary: string,
+    risk_breakdown: {
+        collateral: number,
+        curator: number,
+        smart_contract: number,
+        market: number,
+        exit: number,
     },
-    risk: {
-        summary: string,                 // evidence: "Single exotic collateral (USDe) at 12%"
-        exposure_concentration: string,
-        oracle_health: string,           // evidence: "Chainlink, 0 stale events in 90d"
-        exit_feasibility: string,        // evidence: "Utilization 72%, <1% impact at $100k"
-        borrow_rate_risk: string,        // CA only, evidence-backed
-        curator_trust: string,           // evidence: "Steakhouse, no bad debt history"
-        pending_changes: string,         // "None" or "IRM update queued, executes Apr 10"
-    },
-    constraints: {
-        max_position_usd: number,
-        min_position_usd: number,
-        availability: string,            // "Permissionless" or "Requires KYC via <url>"
-    },
+    reasoning: string[],
 }
 ```
 
-Every memo field MUST include the underlying numbers that support the assessment. An agent that outputs "oracle: healthy" without heartbeat, staleness count, and spread data is non-conforming. The API serves raw facts (this document); the agent does the reasoning and compression.
+Every compressed field must still be evidence-backed. The API serves raw facts from this document; the agent performs the reasoning and ranking.
 
 ---
 
-## Stage 3: Propose — Allocation Decision
+## Stage 3: Propose — Action selection and transaction construction
 
-**What happens:** Investment Committee agent receives research memos for all candidates. Applies portfolio-level constraints (diversification, max concentration, risk budget). Produces an allocation decision.
+**What happens:** The agent chooses the optimal action — or decides to do nothing. This stage consumes analyzed candidates, existing position context, and route-building logic to construct a proposed action.
 
-**Input:** Array of ResearchMemos + agent's portfolio constraints + existing positions (if rebalancing).
+**Input:** Array of `AnalyzedOpportunity` + agent portfolio constraints + existing positions (if rebalancing).
 
 **Output → Preview:**
 
 ```typescript
-interface AllocationDecision {
-    decisions: Array<{
+interface RawTx {
+    to: string,
+    calldata: string,
+    value?: string,
+}
+
+interface ProposedAction {
+    actions: Array<{
         candidate_id: string,
-        action: "deposit" | "open_position" | "skip",
-        amount_usd: number,
+        action: "deposit" | "open_position" | "rebalance" | "do_nothing",
         rationale: string,
-        target_leverage?: number,        // CA only
-        collateral_token?: string,       // CA only
+        amount_usd?: number,
+        target_leverage?: number,
+        collateral_token?: string,
+        raw_tx?: RawTx,
     }>,
-    total_deployed_usd: number,
-    reserve_usd: number,
-    committee_notes: string,
 }
 ```
 
-No new API data requirements — the committee works from memos and agent-internal state. Cross-pool correlation ("Am I already exposed to USDe through another pool?") is tracked agent-side.
+This stage is not only transaction building. It also answers:
+
+- is the current position already acceptable,
+- would rebalance cost exceed expected gain,
+- should the agent choose a different route,
+- should the agent explicitly do nothing right now.
+
+No new backend data requirements are introduced here. The stage works from Analyze outputs plus live SDK and router reads. Cross-pool correlation and portfolio concentration remain agent-side concerns.
 
 ---
 
-## Stage 4: Preview — Pre-execution Validation
+## Stage 4: Preview — Universal transaction validation
 
-**What happens:** Execution desk takes each allocation decision and validates it against real chain state. Produces go/no-go with actual calldata. This catches stale data, slippage, and chain state changes since the DD was done.
+**What happens:** Preview simulates the exact `RawTx` bytes against current chain state. It is the universal security gate between Propose and Execute.
 
-**Agent question:** "Will this transaction do what I expect, or has something changed?"
+**Agent question:** "Will this exact transaction do what I expect right now, or have conditions changed?"
 
-### LP Preview
+**Core rule:** the same bytes previewed are the bytes executed.
+
+If preview fails, the loop returns to **Propose**, not Analyze. The underlying analysis can still be valid even when the execution parameters need adjustment.
+
+### LP preview-specific fields
 
 | Field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
-| Expected shares at deposit amount | "How many dTokens will I receive?" — the agent compares to its model. Large deviation = pool state changed since DD. | snapshot (computed, via ERC-4626 previewDeposit) | ? |
-| Share price (exchange rate) | "Has the share price moved since DD?" — a drop could indicate bad debt event between analysis and execution. | snapshot | ? |
+| Expected shares at deposit amount | "How many dTokens will I receive?" — the agent compares to its model. Large deviation = pool state changed since analysis. | snapshot (computed, via ERC-4626 previewDeposit) | ? |
+| Share price (exchange rate) | "Has the share price moved since analysis?" — a drop could indicate bad debt event between analysis and execution. | snapshot | ? |
 | Pool TVL after deposit (projected) | "What's my concentration?" — if the agent would become >10% of the pool, it may want to reduce. | snapshot (computed) | ? |
-| Concentration percentage | "What share of the pool will I be?" — `my_deposit / (tvl + my_deposit)`. High concentration = the agent IS the pool's liquidity risk. | snapshot (computed) | ? |
-| Deviation from proposal | "Has anything shifted since the committee decided?" — the preview compares current snapshot to the data the memo was based on. Flags: APY changed >10%, utilization changed >5pp, TVL changed >20%. | snapshot (computed) | ? |
+| Concentration percentage | "What share of the pool will I be?" — `my_deposit / (tvl + my_deposit)`. High concentration = the agent is the pool's liquidity risk. | snapshot (computed) | ? |
+| Deviation from proposal | "Has anything shifted since the action was proposed?" — the preview compares current snapshot to the data the proposal was based on. Flags: APY changed >10%, utilization changed >5pp, TVL changed >20%. | snapshot (computed) | ? |
 | Gas estimate (USD) | "What does execution cost?" — at small positions, gas can be material. | snapshot (computed) | ? |
-| Warnings | "Is there anything unusual?" — array of strings. E.g., "pool utilization will exceed 95% after deposit", "share price dropped 0.5% since DD." | snapshot (computed) | ? |
+| Warnings | "Is there anything unusual?" — array of strings. Example: "pool utilization will exceed 95% after deposit", "share price dropped 0.5% since analysis." | snapshot (computed) | ? |
 | Calldata | Ready-to-submit transaction data. | snapshot (computed) | ? |
 
-### CA Preview
+### CA preview-specific fields
 
 | Field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
-| Simulated health factor after open | "What's my HF right after opening?" — if lower than expected (e.g., due to swap impact), the agent may reduce leverage or abort. | snapshot (computed, via SDK router simulation) | ? |
-| Position value USD | "Does the position size match the allocation?" — sanity check. | snapshot (computed) | ? |
+| Simulated health factor after open | "What's my HF right after opening?" — if lower than expected, the agent may reduce leverage or abort. | snapshot (computed, via SDK router simulation) | ? |
+| Position value USD | "Does the position size match the proposal?" — sanity check. | snapshot (computed) | ? |
 | Actual leverage | "Is my real leverage what I asked for?" — may differ from target due to swap impact. If actual is 5.2x and target was 5x, acceptable. If 6.1x, concerning. | snapshot (computed) | ? |
-| Swap impact (bps) | "How much did I lose to slippage on the entry swap?" — compared to the entry cost estimate from DD. If significantly worse, abort. | snapshot (computed) | ? |
+| Swap impact (bps) | "How much did I lose to slippage on the entry swap?" — compared to the entry cost estimate from Analyze. If significantly worse, abort. | snapshot (computed) | ? |
 | Token balances after open | "What will I actually hold?" — full breakdown of the position's token composition post-open. | snapshot (computed) | ? |
-| Deviation from proposal | Same as LP — flags significant changes since DD. | snapshot (computed) | ? |
+| Deviation from proposal | Same as LP — flags significant changes since the action was proposed. | snapshot (computed) | ? |
 | Gas estimate (USD) | Execution cost. | snapshot (computed) | ? |
-| Warnings | Array of strings — e.g., "borrowable liquidity dropped 40% since DD", "HF 1.08, below 1.1 threshold." | snapshot (computed) | ? |
+| Warnings | Array of strings — for example: "borrowable liquidity dropped 40% since analysis", "HF 1.08, below 1.1 threshold." | snapshot (computed) | ? |
 | Multicall data | Ready-to-submit multicall transaction. | snapshot (computed) | ? |
 
-### Handoff: Preview → Execute (Execution Plan)
+### Handoff: Preview → Execute (Execution-ready action)
 
 ```typescript
-interface ExecutionPlan {
+interface ExecutionReadyAction {
     actions: Array<{
         candidate_id: string,
         status: "go" | "no_go",
-        reason?: string,               // if no_go: "swap impact 3.2% exceeds 2% threshold"
-        calldata: string,
+        reason?: string,
+        raw_tx: RawTx,
         gas_estimate_usd: number,
         expected_outcome: {
-            shares?: string,            // LP
-            health_factor?: number,     // CA
-            leverage?: number,          // CA
-        }
-    }>
+            shares?: string,
+            health_factor?: number,
+            leverage?: number,
+        },
+        execution_mode?: "human_in_the_loop" | "bot_execution",
+    }>,
 }
 ```
 
-If too many actions are no-go, the plan loops back to the Committee stage for revision.
+`no_go` actions loop back to Propose for parameter adjustment or alternative selection.
 
 ---
 
-## Stage 5a: Monitor — LP
+## Stage 5: Execute — Approval and submission
+
+**What happens:** Execution signs and submits the exact bytes that passed Preview.
+
+There are two execution modes:
+
+- **Human-in-the-Loop** — the agent encodes the preview into a verifier flow and a human signs.
+- **Bot Execution** — a bot signer executes within bounded on-chain permissions.
+
+This stage does not introduce new backend data requirements. It consumes the preview-approved transaction and signer context.
+
+The key guarantee remains:
+
+- same bytes previewed
+- same bytes executed
+
+---
+
+## Stage 6a: Monitor — LP
 
 **What happens:** LP agent periodically checks that yield is holding, exit remains possible, and the pool's risk composition hasn't changed in ways the agent didn't anticipate.
 
@@ -555,7 +588,7 @@ Not only curator parameter changes matter — organic borrower behavior can shif
 | Parameter changes (curator actions) | "Did the curator add new collateral, change debt limits, modify IRM?" — explicit governance changes to the pool's risk profile. | event log | ? |
 | Per-token quota composition shift | "Has borrower behavior changed what I'm exposed to?" — even without parameter changes, the mix of collateral held by borrowers can shift organically. Token A was 60% of exposure, now token B is 70%. The agent compares current composition to what it was at entry. | snapshot (current vs entry baseline) | ? |
 | New CMs added to pool | "Is there a new risk envelope drawing from my pool?" — a new CM means a new set of collateral rules and a new source of potential bad debt. | event log | ? |
-| Pending governance changes | "What's about to change?" — same field as Evaluate Q5, checked every monitoring cycle. Queued Safe TX / timelock transactions affecting this pool. | snapshot | ? |
+| Pending governance changes | "What's about to change?" — same field as Analyze Q5, checked every monitoring cycle. Queued Safe TX / timelock transactions affecting this pool. | snapshot | ? |
 
 ---
 
@@ -569,7 +602,7 @@ Not only curator parameter changes matter — organic borrower behavior can shif
 
 ---
 
-## Stage 5b: Monitor — CA
+## Stage 6b: Monitor — CA
 
 **What happens:** CA agent periodically checks position health. The core metric is health factor (HF), but the agent also needs to understand WHY HF changed to decide whether to act (deleverage, exit) or wait (temporary volatility). The backend provides raw facts — the agent does the reasoning.
 
@@ -590,7 +623,7 @@ The agent reads the full position snapshot and compares it to the previous check
 | Per-token quota (this CA's quota per token) | How much of the token's value counts toward HF. If quota < actual value, the agent is "over-collateralized" on that token — excess doesn't help. | snapshot | ? |
 | Leverage (current) | "Am I more leveraged than intended?" — leverage = total value / (total value - debt). Drift from target leverage signals the position is getting riskier. | snapshot | ? |
 | HF history (lifetime) | "Is HF steadily declining or was this a spike?" — trend detection. Steady decline = structural (interest accrual, LT ramp). Spike = price event, likely recoverable. | history (per-tx or daily) | ? |
-|| Total value history (lifetime) | "Is the position growing or decaying?" — P&L trend over time. | history (per-tx or daily) | ? |
+| Total value history (lifetime) | "Is the position growing or decaying?" — P&L trend over time. | history (per-tx or daily) | ? |
 
 ### Delayed withdrawals
 
@@ -673,19 +706,19 @@ Collected from stages above. All history fields in one place for implementation 
 | H3 | TVL per pool | Q3: capital flight | Daily | 90 days | P0 |
 | H4 | Supply/borrow rates per pool | Q1: cost trend | Daily | 30 days | P1 |
 | H5 | Price of underlying per pool | Q2: volatility | Daily | 90 days | P1 |
-| H6 | HF per credit account | Stage 5: trend detection | Per-tx or daily | Lifetime | P1 |
-| H7 | Total value per credit account | Stage 5: P&L baseline | Per-tx or daily | Lifetime | P1 |
+| H6 | HF per credit account | Stage 6: trend detection | Per-tx or daily | Lifetime | P1 |
+| H7 | Total value per credit account | Stage 6: P&L baseline | Per-tx or daily | Lifetime | P1 |
 
 Notes:
 
-- Daily granularity is sufficient for DD (Stage 2). Per-tx is nice-to-have for CA position tracking.
-- 90 days is the ideal DD window. 30 days is the minimum useful range.
+- Daily granularity is sufficient for analysis (Stage 2). Per-tx is nice-to-have for CA position tracking.
+- 90 days is the ideal analysis window. 30 days is the minimum useful range.
 
 ---
 
 ## Appendix B: Event Log
 
-These are on-chain events needed for the parameter change log and Stage 5 monitoring. Organized by what they tell the agent.
+These are on-chain events needed for the parameter change log and Stage 6 monitoring. Organized by what they tell the agent.
 
 ### "The rules changed" (parameter governance)
 
@@ -749,9 +782,9 @@ These are on-chain events needed for the parameter change log and Stage 5 monito
 |---|-------------|-------------|----------|
 | C1 | Total APY (supply_rate + Merkl + protocol yield) | Stage 1: discovery filter | P0 |
 | C2 | Exposure chain per pool (tokens → LTs → debt limits → positions) | Stage 2: Q2 risk | P0 |
-| C3 | P&L per LP (deposit events + current share price) | Stage 5: LP monitoring | P1 |
-| C4 | P&L per CA (position open + mutations + current state) | Stage 5: CA monitoring | P1 |
-| C5 | HF attribution (price deltas + LT changes + interest accrual) | Stage 5: CA monitoring | P1 |
+| C3 | P&L per LP (deposit events + current share price) | Stage 6: LP monitoring | P1 |
+| C4 | P&L per CA (position open + mutations + current state) | Stage 6: CA monitoring | P1 |
+| C5 | HF attribution (price deltas + LT changes + interest accrual) | Stage 6: CA monitoring | P1 |
 | C6 | Curator identity mapping (controller address → name) | Stage 2: Q4 trust | P2 |
 | C7 | Insurance coverage ratio (treasury balance vs total debt) | Stage 2: Q2 risk | P1 |
 
@@ -781,12 +814,12 @@ These are the loss vectors specific to RWA/KYC that don't exist with standard De
 | Curator profile fields (standalone) | 7 |
 | LP discovery fields (Stage 1a) | 5 |
 | CA discovery fields (Stage 1b) | 11 (+4: strategy_key, availability, points, chain_id) |
-| LP due diligence fields (Stage 2a) | ~23 (+1: pending governance) |
-| CA due diligence fields (Stage 2b) | ~24 (+5: entry cost, breakeven, risk_disclosure, pending gov, borrow rate xref) |
+| LP analyze fields (Stage 2a) | ~23 (+1: pending governance) |
+| CA analyze fields (Stage 2b) | ~24 (+5: entry cost, breakeven, risk_disclosure, pending gov, borrow rate xref) |
 | LP preview fields (Stage 4) | 8 (new) |
 | CA preview fields (Stage 4) | 9 (new) |
-| LP monitoring fields (Stage 5a) | ~13 (+1: pending governance) |
-| CA monitoring fields (Stage 5b) | ~22 (+5: pending gov, emergency state bundle) |
+| LP monitoring fields (Stage 6a) | ~13 (+1: pending governance) |
+| CA monitoring fields (Stage 6b) | ~22 (+5: pending gov, emergency state bundle) |
 | RWA / KYC-specific extension fields | 32 |
 | Historical series | 7 |
 | Event types to index | 34 |
@@ -800,8 +833,8 @@ These are the loss vectors specific to RWA/KYC that don't exist with standard De
 - event log (change records): 34 event types — backend indexes on-chain events
 - merged RWA / KYC extension: 32 additional stage-specific fields, primarily snapshot fields with one dedicated event-log stream for whitelist changes
 
-**Handoff contracts defined:** AgentTask → Shortlist → ResearchMemo → AllocationDecision → ExecutionPlan. See ../synthesis/staged-agent-architecture.md and ../synthesis/memo-standard.md for full definitions.
+**Handoff contracts defined:** AgentTask → Shortlist → AnalyzedOpportunity → ProposedAction / RawTx → ExecutionReadyAction. See ../synthesis/staged-agent-architecture.md and ../synthesis/memo-standard.md for full definitions.
 
-**Stage numbering:** Stages 1-2 (Discover, Evaluate) are the original spec. Stage 3 (Propose) and Stage 4 (Preview) are new. Stage 5 (Monitor) was previously Stage 3. Renumbered to match the 6-stage pipeline.
+**Stage numbering:** The current canonical sequence is Discover → Analyze → Propose → Preview → Execute → Monitor. Execute is Stage 5. Monitoring is Stage 6.
 
 **Next step:** Review each table and mark the Status column as A / B / C. The stage structure shows exactly why each field is needed — every field traces to an agent question at a specific step. The RWA / KYC-specific fields are integrated directly into the stage sections above and summarized in Appendix D.
