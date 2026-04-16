@@ -1,4 +1,4 @@
-# Gearbox Agent SDK API — Navigation Guide
+# Gearbox Agentic Product — Navigation Guide
 
 This repository is organized around one final output:
 
