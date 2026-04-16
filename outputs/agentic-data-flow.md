@@ -105,34 +105,40 @@ The response surface is unified even when the agent later chooses to focus only 
 
 The tables below use human-readable data-group names in the first column. Exact technical references are grouped separately so the product doc stays readable while still mapping cleanly to `types_.ts`.
 
+Convention for the `Tech name references` column:
+
+- `present — ...` = explicitly represented in the current backend draft
+- `partial — ...` = some grounding exists, but the full type or richer structure is still missing
+- `missing — ...` = not explicitly drafted yet and should be added
+
 ### Base `Opportunity` data groups
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|---------------------|----------------------|-----------|--------|
-| Opportunity identity | "What is this opportunity, and how do I refer to it later?" | `Opportunity.id`, `Opportunity.type`, `Opportunity.title` | snapshot | ? |
-| Routing context | "Which chain and base asset is this on?" | `Opportunity.chainId`, `Opportunity.underlyingToken: TokenRef` | snapshot | ? |
-| Curator reference | "Whose opportunity is this?" | `Opportunity.curatorId` | snapshot | ? |
-| Access parameters | "Do I need to do anything before I can use this opportunity?" | `Opportunity.access.permissionless`, `Opportunity.access.kycRequired`, `Opportunity.access.kycUrl` | snapshot | ? |
-| Discovery risk hints | "Is there anything I should notice before I analyze this?" | `Opportunity.risk.summary`, `Opportunity.risk.warnings` | snapshot | ? |
+| Opportunity identity | "What is this opportunity, and how do I refer to it later?" | present — `Opportunity.id`, `Opportunity.type`, `Opportunity.title` | snapshot | ? |
+| Routing context | "Which chain and base asset is this on?" | present — `Opportunity.chainId`, `Opportunity.underlyingToken: TokenRef` | snapshot | ? |
+| Curator reference | "Whose opportunity is this?" | present — `Opportunity.curatorId` | snapshot | ? |
+| Access parameters | "Do I need to do anything before I can use this opportunity?" | present — `Opportunity.access.permissionless`, `Opportunity.access.kycRequired`, `Opportunity.access.kycUrl` | snapshot | ? |
+| Discovery risk hints | "Is there anything I should notice before I analyze this?" | present — `Opportunity.risk.summary`, `Opportunity.risk.warnings` | snapshot | ? |
 
 ### `PoolOpportunity` extension data groups
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|---------------------|----------------------|-----------|--------|
-| Pool identifier | "Which pool is this exactly?" | `PoolOpportunity.poolAddress` | snapshot | ? |
-| Pool headline yield | "What does this pool currently pay?" | `PoolOpportunity.yield: YieldBreakdown` | snapshot (computed) | ? |
-| Pool size and liquidity snapshot | "How large is the pool, and how much liquidity is immediately available?" | `PoolOpportunity.supplied`, `PoolOpportunity.borrowed`, `PoolOpportunity.utilization`, `PoolOpportunity.tvl`, `PoolOpportunity.tvlUsd`, `PoolOpportunity.availableLiquidity` | snapshot | ? |
-| Pool collateral surface | "What first-pass collateral exposure am I inheriting by lending here?" | `PoolOpportunity.collaterals: PoolCollateral[]` | snapshot | ? |
+| Pool identifier | "Which pool is this exactly?" | present — `PoolOpportunity.poolAddress` | snapshot | ? |
+| Pool headline yield | "What does this pool currently pay?" | present — `PoolOpportunity.yield: YieldBreakdown` | snapshot (computed) | ? |
+| Pool size and liquidity snapshot | "How large is the pool, and how much liquidity is immediately available?" | present — `PoolOpportunity.supplied`, `PoolOpportunity.borrowed`, `PoolOpportunity.utilization`, `PoolOpportunity.tvl`, `PoolOpportunity.tvlUsd`, `PoolOpportunity.availableLiquidity` | snapshot | ? |
+| Pool collateral surface | "What first-pass collateral exposure am I inheriting by lending here?" | present — `PoolOpportunity.collaterals: PoolCollateral[]` | snapshot | ? |
 
 ### `StrategyOpportunity` extension data groups
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|---------------------|----------------------|-----------|--------|
-| Strategy sizing bounds | "Can I enter at the size I want?" | `StrategyOpportunity.minDebt`, `StrategyOpportunity.maxDebt` | snapshot | ? |
-| Strategy capacity and leverage | "How much room is left, and how much leverage is available?" | `StrategyOpportunity.borrowableLiquidity`, `StrategyOpportunity.maxLeverage`, `StrategyOpportunity.borrowApy` | snapshot | ? |
-| Strategy headline economics | "What is the best visible leveraged outcome here?" | `StrategyOpportunity.maxLeverageYield: LeveragedYieldBreakdown`, `StrategyOpportunity.bestBaseYield: YieldBreakdown` | snapshot (computed) | ? |
-| Strategy collateral surface | "Which collateral paths and quota constraints exist?" | `StrategyOpportunity.collaterals: StrategyCollateral[]` | snapshot | ? |
-| Strategy operating flags | "Is the strategy currently usable, and does it involve non-atomic settlement?" | `StrategyOpportunity.isPaused`, `StrategyOpportunity.hasDelayedWithdrawal` | snapshot | ? |
+| Strategy sizing bounds | "Can I enter at the size I want?" | present — `StrategyOpportunity.minDebt`, `StrategyOpportunity.maxDebt` | snapshot | ? |
+| Strategy capacity and leverage | "How much room is left, and how much leverage is available?" | present — `StrategyOpportunity.borrowableLiquidity`, `StrategyOpportunity.maxLeverage`, `StrategyOpportunity.borrowApy` | snapshot | ? |
+| Strategy headline economics | "What is the best visible leveraged outcome here?" | present — `StrategyOpportunity.maxLeverageYield: LeveragedYieldBreakdown`, `StrategyOpportunity.bestBaseYield: YieldBreakdown` | snapshot (computed) | ? |
+| Strategy collateral surface | "Which collateral paths and quota constraints exist?" | present — `StrategyOpportunity.collaterals: StrategyCollateral[]` | snapshot | ? |
+| Strategy operating flags | "Is the strategy currently usable, and does it involve non-atomic settlement?" | present — `StrategyOpportunity.isPaused`, `StrategyOpportunity.hasDelayedWithdrawal` | snapshot | ? |
 
 ### Handoff: Discover → Analyze (shortlisted opportunities)
 
@@ -159,10 +165,10 @@ LP yield has two components: organic (supply rate from borrower interest + quota
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| Supply rate (organic) | "What do I earn from the pool itself?" — if organic rate is low, yield depends on incentives which can disappear. The agent prefers pools where organic rate alone meets the floor. | `YieldBreakdown.base` | snapshot + history (90d daily) | ? |
+| Supply rate (organic) | "What do I earn from the pool itself?" — if organic rate is low, yield depends on incentives which can disappear. The agent prefers pools where organic rate alone meets the floor. | present — `YieldBreakdown.base` | snapshot + history (90d daily) | ? |
 | Incentive yield (Merkl campaigns) | "What extra rewards am I getting?" — Merkl campaigns are straightforward, historical rates available from backend. The agent checks if incentives have been stable or declining. | partial — generic incentives exist via `YieldBreakdown.incentives[]`; Merkl-specific source tagging is missing | snapshot + history (90d daily) | ? |
 | Incentive yield (protocol-specific campaigns) | Some pools have non-standard reward programs (e.g., apple farm) with tricky distribution. Only approximate rates / projections possible. The agent treats these as unreliable upside, not base case. | partial — generic incentives exist via `YieldBreakdown.incentives[]`; protocol-specific campaign typing is missing | snapshot (approximate) | ? |
-| Total APY (composite) | "What's the total yield?" — combined organic + incentive. The agent compares this to its target return and checks if historical composite has been stable. | `YieldBreakdown.totalApy` | snapshot + history (90d daily) | ? |
+| Total APY (composite) | "What's the total yield?" — combined organic + incentive. The agent compares this to its target return and checks if historical composite has been stable. | present — `YieldBreakdown.totalApy` | snapshot + history (90d daily) | ? |
 
 ### Q2-LP: "What could blow up my pool?" (Exposure chain)
 
@@ -175,10 +181,10 @@ The LP's real risk is indirect: borrowers hold risky collateral, collateral depe
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
 | Total debt limit | "What's the governance-set cap?" — rarely a binding constraint in practice (usually comparable to or larger than pool TVL), but the agent notes it as a ceiling. | missing — needs a pool-level debt limit field | snapshot | ? |
-| Quoted tokens list | "What collateral exists in the system?" — signals the pool's risk surface. More exotic tokens = less predictable risk. | `PoolOpportunity.collaterals[].token` | snapshot | ? |
-| Per-token quota rate | "Which tokens are in high borrowing demand?" — quota rate is an additional borrow cost for those who use a specific collateral. Higher rate = more demand to borrow against that token. The agent reads this as a proxy for how actively a collateral type is used. | `PoolCollateral.quotaRate` / `StrategyCollateral.quotaRate` / `UserCollateral.quota` | snapshot | ? |
-| Per-token quota limit | "What's the cap on each token's exposure?" — the agent checks how close total quoted is to the limit. Near-cap = exposure can't grow further, which can be reassuring. | `PoolCollateral.quotaLimit` / `StrategyCollateral.quotaLimit` | snapshot | ? |
-| Per-token total quoted | "How much exposure exists right now per token?" — the agent compares this to the quota limit. | `PoolCollateral.quotaUsed` | snapshot | ? |
+| Quoted tokens list | "What collateral exists in the system?" — signals the pool's risk surface. More exotic tokens = less predictable risk. | present — `PoolOpportunity.collaterals[].token` | snapshot | ? |
+| Per-token quota rate | "Which tokens are in high borrowing demand?" — quota rate is an additional borrow cost for those who use a specific collateral. Higher rate = more demand to borrow against that token. The agent reads this as a proxy for how actively a collateral type is used. | present — `PoolCollateral.quotaRate` / `StrategyCollateral.quotaRate` / `UserCollateral.quota` | snapshot | ? |
+| Per-token quota limit | "What's the cap on each token's exposure?" — the agent checks how close total quoted is to the limit. Near-cap = exposure can't grow further, which can be reassuring. | present — `PoolCollateral.quotaLimit` / `StrategyCollateral.quotaLimit` | snapshot | ? |
+| Per-token total quoted | "How much exposure exists right now per token?" — the agent compares this to the quota limit. | present — `PoolCollateral.quotaUsed` | snapshot | ? |
 | Insurance fund (treasury dToken balance) | "Is there a bad debt buffer?" — if large, gives additional conviction. If small or absent, that's normal in DeFi and not a dealbreaker — insurance funds are uncommon across the industry. The agent treats this as upside signal, not a requirement. | missing — needs an insurance fund snapshot type | snapshot | ? |
 | Oracle methodology per token | "How is each collateral token priced?" — pool-level (PriceOracle is shared across CMs). There is no universally "good" or "bad" oracle type. Market oracle on a liquid token works well, but on a thin market = manipulation risk. Hardcoded oracle protects against manipulation, but if real price diverges significantly, positions can't be liquidated. The right type depends on the asset's fundamental properties and available reference markets. The agent needs the methodology to compare against what it knows about the token. | missing — needs oracle metadata fields | snapshot | ? |
 
@@ -189,10 +195,10 @@ Each CM is a separate risk envelope with its own collateral rules. A pool may ha
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
 | CM name / address | Identification — the agent needs to distinguish CMs to assess risk concentration. | missing — needs a Credit Manager descriptor type | snapshot | ? |
-| Liquidation threshold per token | Implicitly gives the collateral token list. Non-zero LT = real exposure; zero LT = no risk from this token. Higher LT = more leverage allowed = more bad debt risk for the LP. | `StrategyCollateral.liquidationThreshold` | snapshot | ? |
+| Liquidation threshold per token | Implicitly gives the collateral token list. Non-zero LT = real exposure; zero LT = no risk from this token. Higher LT = more leverage allowed = more bad debt risk for the LP. | present — `StrategyCollateral.liquidationThreshold` | snapshot | ? |
 | Borrowed amount | "How much debt is at risk through this CM right now?" — the agent checks if one CM dominates the pool's total debt (concentration risk). | missing — needs a per-Credit-Manager borrowed amount field | snapshot | ? |
 | Debt limit | "How much MORE debt could accumulate through this CM?" — high remaining capacity = exposure can grow. | missing — needs a per-Credit-Manager debt limit field | snapshot | ? |
-| Is paused (facade) | "Is this CM operational?" — paused CM can't take new positions (exposure shrinks), but existing underwater positions can't be liquidated either. This creates a second-level risk: bad debt can accumulate in paused CMs because the normal liquidation mechanism is disabled. The agent checks: is the CM paused AND does it have significant borrowed amount? | `StrategyOpportunity.isPaused` | snapshot | ? |
+| Is paused (facade) | "Is this CM operational?" — paused CM can't take new positions (exposure shrinks), but existing underwater positions can't be liquidated either. This creates a second-level risk: bad debt can accumulate in paused CMs because the normal liquidation mechanism is disabled. The agent checks: is the CM paused AND does it have significant borrowed amount? | present — `StrategyOpportunity.isPaused` | snapshot | ? |
 
 ### Q2-LP extension: "What RWA-specific risks am I exposed to?"
 
@@ -228,10 +234,10 @@ The LP's existing exposure chain analysis (pool → CMs → tokens) covers gener
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| Available liquidity | "How much can I withdraw right now?" — if less than the agent's position, it can only partially exit. | `PoolOpportunity.availableLiquidity` | snapshot | ? |
+| Available liquidity | "How much can I withdraw right now?" — if less than the agent's position, it can only partially exit. | present — `PoolOpportunity.availableLiquidity` | snapshot | ? |
 | Expected liquidity | Total pool value including accrued interest — context for available liquidity as a percentage. | missing — needs a projected liquidity field | snapshot | ? |
-| Total borrowed | "How much is lent out and unavailable?" — the agent computes: available / expected = how liquid the pool actually is. | `PoolOpportunity.borrowed` | snapshot | ? |
-| Utilization rate | "Is liquidity tight?" — primary exit risk signal. Above 90% = withdrawals may be difficult or delayed. | `PoolOpportunity.utilization` | snapshot | ? |
+| Total borrowed | "How much is lent out and unavailable?" — the agent computes: available / expected = how liquid the pool actually is. | present — `PoolOpportunity.borrowed` | snapshot | ? |
+| Utilization rate | "Is liquidity tight?" — primary exit risk signal. Above 90% = withdrawals may be difficult or delayed. | present — `PoolOpportunity.utilization` | snapshot | ? |
 | Withdrawal fee | "What does exit cost?" — max 100 bps. The agent factors this into net return calculation. | missing — needs a withdrawal fee field | snapshot | ? |
 | IRM parameters (U1, U2, Rbase, Rslope1-3) | "If utilization spikes, will borrow cost push borrowers to repay?" — steep slope above U2 = borrowers repay faster, freeing liquidity. Flat slope = liquidity stays locked. | missing — needs an interest-rate-model parameter type | snapshot | ? |
 | Is borrowing above U2 forbidden | "Is there a safety net for LP exits?" — if true, liquidity above U2 is reserved for LP withdrawals. The agent knows exit is protected even at high utilization. | missing — needs a borrow-above-U2 policy flag | snapshot | ? |
@@ -242,7 +248,7 @@ The LP's existing exposure chain analysis (pool → CMs → tokens) covers gener
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| Curator/controller address | "Who can change pool and CM parameters?" — the agent may check this address against a whitelist or look at on-chain history. | `Opportunity.curatorId` | snapshot | ? |
+| Curator/controller address | "Who can change pool and CM parameters?" — the agent may check this address against a whitelist or look at on-chain history. | present — `Opportunity.curatorId` | snapshot | ? |
 | Curator name | Human-readable identity for the agent's trust assessment. | missing — needs `CuratorProfile.name` | snapshot | ? |
 
 ### Q5-LP: "What could change after I deposit?"
@@ -276,10 +282,10 @@ The agent is computing: (collateral yield x leverage) - borrow cost - quota fees
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| Collateral token yield (base APY) | "What does my target collateral earn on its own?" — e.g., stETH earns staking yield. If this yield is lower than borrow cost, the position is unprofitable regardless of leverage. | `StrategyCollateral.yield.base` | snapshot + history (90d daily) | ? |
-| Borrow rate | "What do I pay to borrow the underlying?" — the agent subtracts this from collateral yield. If borrow rate > collateral yield, more leverage = more loss. | `StrategyOpportunity.borrowApy` / `UserStrategyPosition.borrowApy` | snapshot + history (30d daily) | ? |
+| Collateral token yield (base APY) | "What does my target collateral earn on its own?" — e.g., stETH earns staking yield. If this yield is lower than borrow cost, the position is unprofitable regardless of leverage. | present — `StrategyCollateral.yield.base` | snapshot + history (90d daily) | ? |
+| Borrow rate | "What do I pay to borrow the underlying?" — the agent subtracts this from collateral yield. If borrow rate > collateral yield, more leverage = more loss. | present — `StrategyOpportunity.borrowApy` / `UserStrategyPosition.borrowApy` | snapshot + history (30d daily) | ? |
 | IRM parameters (U1, U2, Rbase, Rslope1-3) | "If more people borrow, how fast does my cost spike?" — the agent models: at current utilization I pay X, at +10% utilization I pay Y. Steep slope = fragile economics. | missing — needs an interest-rate-model parameter type | snapshot | ? |
-| Per-token quota rate | "What's the annual holding cost for my collateral in the quota system?" — this is an additional cost on top of borrow rate. High quota rate on my target token = position bleeds even when prices are flat. | `PoolCollateral.quotaRate` / `StrategyCollateral.quotaRate` / `UserCollateral.quota` | snapshot | ? |
+| Per-token quota rate | "What's the annual holding cost for my collateral in the quota system?" — this is an additional cost on top of borrow rate. High quota rate on my target token = position bleeds even when prices are flat. | present — `PoolCollateral.quotaRate` / `StrategyCollateral.quotaRate` / `UserCollateral.quota` | snapshot | ? |
 | Per-token quota increase fee | "What's the one-time entry cost?" — the agent adds this to position setup cost. | missing — needs a quota-increase-fee field | snapshot | ? |
 | Fee parameters (liquidation fee, premium) | "If I get liquidated, how much do I lose beyond the position value?" — the agent factors this into worst-case modeling. Higher fees = more severe liquidation penalty. | missing — needs liquidation-fee and premium fields | snapshot | ? |
 | Entry swap cost estimate (at position size) | "How much do I lose just getting in?" — swapping underlying→collateral (e.g., USDC→USDe) has a cost. At moderate positions, this can be $100-200. If strategy earns 3-4% APY, that's 2-3 weeks of profit before breakeven on entry alone. The agent uses this to filter out strategies where entry friction eats the yield. | missing — needs a router quote / route result type | snapshot (computed, from router) | ? |
@@ -305,8 +311,8 @@ The agent is deciding whether to hold a specific asset inside a leveraged positi
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| Liquidation threshold per token | "What's my max leverage on this collateral?" — LT directly determines HF. LT of 85% = max ~6.5x leverage before liquidation. The agent sizes its position based on this. | `StrategyCollateral.liquidationThreshold` | snapshot | ? |
-| Max leverage (computed from LT) | "How much leverage can I take?" — `1 / (1 - LT)`. Backend should serve this as a pre-computed field so agents don't need to calculate. LT 85% = 6.67x, LT 90% = 10x. The agent compares this to its target leverage. | `StrategyOpportunity.maxLeverage` | snapshot (computed) | ? |
+| Liquidation threshold per token | "What's my max leverage on this collateral?" — LT directly determines HF. LT of 85% = max ~6.5x leverage before liquidation. The agent sizes its position based on this. | present — `StrategyCollateral.liquidationThreshold` | snapshot | ? |
+| Max leverage (computed from LT) | "How much leverage can I take?" — `1 / (1 - LT)`. Backend should serve this as a pre-computed field so agents don't need to calculate. LT 85% = 6.67x, LT 90% = 10x. The agent compares this to its target leverage. | present — `StrategyOpportunity.maxLeverage` | snapshot (computed) | ? |
 | LT ramp schedule | "Is my LT about to decrease?" — if a ramp is active, the agent knows its HF will drop on a schedule even with no price movement. It must plan to deleverage or exit before the ramp reaches a dangerous level. | missing — needs an LT-ramp schedule type | snapshot | ? |
 | Forbidden tokens mask | "Can I enter this collateral, or am I forced to exit?" — if the agent's target token is forbidden, it cannot open the position. If forbidden after opening, it must exit. | missing — needs a forbidden-token state field | snapshot | ? |
 | Delayed withdrawal support | "Can I use this token's native exit path from this CM?" — not all CMs have adapters for a token's withdrawal mechanism. A token may have a native 7-day unstaking queue, but if this CM lacks the adapter, that path is unavailable — the agent can only swap via allowed routes. Source: `WithdrawalCompressor.getWithdrawableAssets(creditManager)` — returns tokens with withdrawal adapters and `withdrawalLength` (seconds). Empty = no delayed withdrawal support. See Stage 3b "Delayed withdrawals" for monitoring in-flight state. | partial — `StrategyOpportunity.hasDelayedWithdrawal` exists, but per-token support details are missing | snapshot | ? |
@@ -334,8 +340,8 @@ The agent is deciding whether to hold a specific asset inside a leveraged positi
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
 | Price impact via router (at position size) | "If I need to exit, how much do I lose to slippage?" — the agent simulates selling its full position through allowed adapters only (not total on-chain liquidity). If price impact at its size is >2%, the effective liquidation threshold is lower than the nominal LT. Needs both current AND historical to assess: is today's liquidity normal or thin? | missing — needs route-preview / price-impact fields | snapshot + history (90d daily) | ? |
-| Borrowable liquidity (remaining in CM) | "Can I adjust leverage later?" — if borrowable is near zero, the agent can't increase leverage or refinance. It must decide now if the current leverage is sufficient. | `StrategyOpportunity.borrowableLiquidity` | snapshot | ? |
-| Min/max debt | "Can I iteratively unwind?" — if the agent partially exits and remaining debt approaches minDebt, it can't repay any more incrementally. It must either close the entire remaining position in one transaction or leave it. The agent plans its exit strategy around these boundaries. | `StrategyOpportunity.minDebt`, `StrategyOpportunity.maxDebt` | snapshot | ? |
+| Borrowable liquidity (remaining in CM) | "Can I adjust leverage later?" — if borrowable is near zero, the agent can't increase leverage or refinance. It must decide now if the current leverage is sufficient. | present — `StrategyOpportunity.borrowableLiquidity` | snapshot | ? |
+| Min/max debt | "Can I iteratively unwind?" — if the agent partially exits and remaining debt approaches minDebt, it can't repay any more incrementally. It must either close the entire remaining position in one transaction or leave it. The agent plans its exit strategy around these boundaries. | present — `StrategyOpportunity.minDebt`, `StrategyOpportunity.maxDebt` | snapshot | ? |
 
 ### Q2-CA extension: "What RWA-specific risks does my collateral have?"
 
@@ -372,7 +378,7 @@ The existing Q2-CA covers generic collateral safety (LT, oracle, exit feasibilit
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
 | Curator/controller address + name | "Who can change my position's parameters?" — the agent may have a whitelist of trusted curators, or may check on-chain history of this address. Unknown curator = higher risk premium. | partial — `Opportunity.curatorId` exists, but standalone curator profile fields are missing | snapshot | ? |
-| Facade paused status | "Can I actually open/close positions right now?" — if paused, the agent cannot enter. It waits or skips. | `StrategyOpportunity.isPaused` | snapshot | ? |
+| Facade paused status | "Can I actually open/close positions right now?" — if paused, the agent cannot enter. It waits or skips. | present — `StrategyOpportunity.isPaused` | snapshot | ? |
 | CM expiration date | "When am I forced to exit?" — expirable strategies have a deadline. The agent must factor in: is the remaining time long enough for the strategy to be profitable after entry costs? | missing — needs a Credit Manager expiration field | snapshot | ? |
 | Max debt per block multiplier | "Is borrowing actually enabled?" — 0 means no new borrows allowed. The agent skips this strategy entirely. | missing — needs a max-debt-per-block field | snapshot | ? |
 
@@ -518,15 +524,15 @@ The key guarantee remains:
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| APY with breakdown (organic / incentive) | "Is yield holding, and where is it coming from?" — a single historical series with breakdown tells the full story. If organic is steady but incentive is declining, the agent knows total yield will drop. If everything is consistently positive, the position is healthy. | `UserPoolPosition.yield: YieldBreakdown<ClaimableIncentive>` | history (90d daily) with current snapshot | ? |
+| APY with breakdown (organic / incentive) | "Is yield holding, and where is it coming from?" — a single historical series with breakdown tells the full story. If organic is steady but incentive is declining, the agent knows total yield will drop. If everything is consistently positive, the position is healthy. | present — `UserPoolPosition.yield: YieldBreakdown<ClaimableIncentive>` | history (90d daily) with current snapshot | ? |
 | Share price (exchange rate) | "Has bad debt been realized?" — share price drops when the pool socializes a loss. A steady or growing share price = no bad debt events. A sudden drop = bad debt was absorbed. The agent uses this as a canary for pool health. | missing — needs a preview or monitor share-price field | snapshot + history (90d daily) | ? |
 
 ### Pool health and exit readiness
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| Pool utilization (current) | "Can I still withdraw?" — above 90% = withdrawals may be difficult. | `PoolOpportunity.utilization` | snapshot | ? |
-| Pool TVL (current) | "Is capital leaving?" — declining TVL = other LPs are exiting, which can accelerate utilization increase. | `PoolOpportunity.tvl`, `PoolOpportunity.tvlUsd` | snapshot | ? |
+| Pool utilization (current) | "Can I still withdraw?" — above 90% = withdrawals may be difficult. | present — `PoolOpportunity.utilization` | snapshot | ? |
+| Pool TVL (current) | "Is capital leaving?" — declining TVL = other LPs are exiting, which can accelerate utilization increase. | present — `PoolOpportunity.tvl`, `PoolOpportunity.tvlUsd` | snapshot | ? |
 | Insurance fund balance change | "Is the buffer I relied on shrinking?" — only relevant if the agent entered partly because of a large insurance fund. If it's shrinking, the conviction that justified entry is weakening. | missing — needs an insurance fund change feed | snapshot (delta from prior) | ? |
 
 ### Risk composition changes
@@ -571,14 +577,14 @@ The agent reads the full position snapshot and compares it to the previous check
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| Health factor | THE metric. Below 1 = liquidation. The agent compares to its own threshold (e.g., 1.3) and decides: comfortable / approaching danger / act now. | `UserStrategyPosition.healthFactor` | snapshot | ? |
+| Health factor | THE metric. Below 1 = liquidation. The agent compares to its own threshold (e.g., 1.3) and decides: comfortable / approaching danger / act now. | present — `UserStrategyPosition.healthFactor` | snapshot | ? |
 | Total value USD | Position value in dollar terms — the agent compares to previous check. | missing — needs `UserStrategyPosition.totalValueUsd` | snapshot | ? |
 | TWV USD (total weighted value) | Numerator of HF. If TWV dropped but total value didn't, the cause is LT change or quota cap — not price. The agent uses this to attribute HF changes. | missing — needs `UserStrategyPosition.totalWeightedValueUsd` | snapshot | ? |
-| Total debt USD | Denominator of HF. If debt grew without the agent borrowing more, the cause is interest accrual. | `UserStrategyPosition.debtUsd` | snapshot | ? |
+| Total debt USD | Denominator of HF. If debt grew without the agent borrowing more, the cause is interest accrual. | present — `UserStrategyPosition.debtUsd` | snapshot | ? |
 | Debt breakdown (principal + interest + quota interest + fees) | Cost decomposition. The agent sees how much of debt growth is base interest vs quota interest vs fees. High quota interest = agent may want to reduce quota or switch collateral. | missing — needs a detailed debt-breakdown type | snapshot | ? |
 | Per-token balances + per-token value USD | What the agent holds and what each token is worth. If a specific token's value dropped, the agent knows which collateral is causing HF decline. | partial — `UserStrategyPosition.collaterals[].balance` exists; per-token USD value is missing | snapshot | ? |
-| Per-token quota (this CA's quota per token) | How much of the token's value counts toward HF. If quota < actual value, the agent is "over-collateralized" on that token — excess doesn't help. | `UserCollateral.quota` | snapshot | ? |
-| Leverage (current) | "Am I more leveraged than intended?" — leverage = total value / (total value - debt). Drift from target leverage signals the position is getting riskier. | `UserStrategyPosition.leverage` | snapshot | ? |
+| Per-token quota (this CA's quota per token) | How much of the token's value counts toward HF. If quota < actual value, the agent is "over-collateralized" on that token — excess doesn't help. | present — `UserCollateral.quota` | snapshot | ? |
+| Leverage (current) | "Am I more leveraged than intended?" — leverage = total value / (total value - debt). Drift from target leverage signals the position is getting riskier. | present — `UserStrategyPosition.leverage` | snapshot | ? |
 | HF history (lifetime) | "Is HF steadily declining or was this a spike?" — trend detection. Steady decline = structural (interest accrual, LT ramp). Spike = price event, likely recoverable. | missing — needs a Health Factor history series | history (per-tx or daily) | ? |
 | Total value history (lifetime) | "Is the position growing or decaying?" — P&L trend over time. | missing — needs a total-value history series | history (per-tx or daily) | ? |
 
@@ -607,7 +613,7 @@ Some collateral tokens require a waiting period to exit (e.g., unstaking from Co
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
 | Expiration date | "Am I approaching forced exit?" — after expiration, the position is liquidatable regardless of HF, with reduced premiums. The agent plans exit before expiration. | missing — needs a Credit Manager expiration field | snapshot | ? |
-| Facade paused status | "Is my CM still operational?" — if paused after the agent entered, it can't close normally. Must wait for unpause. | `StrategyOpportunity.isPaused` | snapshot | ? |
+| Facade paused status | "Is my CM still operational?" — if paused after the agent entered, it can't close normally. Must wait for unpause. | present — `StrategyOpportunity.isPaused` | snapshot | ? |
 
 ### External changes
 
@@ -622,7 +628,7 @@ Grouped fields the agent checks as a unit to assess whether the CM is in an abno
 
 | Human-readable data name | Agent story | Tech name references | Data type | Status |
 |-------|-------------|----------------------|-----------|--------|
-| Facade paused status | "Is my CM still operational?" — if paused after entry, can't close normally. | `StrategyOpportunity.isPaused` | snapshot | ? |
+| Facade paused status | "Is my CM still operational?" — if paused after entry, can't close normally. | present — `StrategyOpportunity.isPaused` | snapshot | ? |
 | Forbidden tokens affecting my position | "Is any of my collateral newly forbidden?" — cross-referenced against agent's holdings. | missing — needs a position-level forbidden-token state | snapshot | ? |
 | Loss policy status | "How would bad debt be handled right now?" — if loss policy changed since entry, the agent reassesses. | missing — needs a loss-policy state field | snapshot | ? |
 | Emergency liquidator active | "Is the system in emergency mode?" — if emergency liquidators are active while the facade is paused, something serious is happening. | missing — needs an emergency-liquidator state field | snapshot | ? |
@@ -658,12 +664,12 @@ Collected from stages above. All history fields in one place for implementation 
 
 | # | Series | Tech name references | Answers | Granularity | Retention | Priority |
 |---|--------|----------------------|---------|-------------|-----------|----------|
-| H1 | APY per pool | `YieldBreakdown.base`, `YieldBreakdown.totalApy`, `YieldBreakdown.incentives[]` | Q1: yield stability | Daily | 90 days | P0 |
-| H2 | Utilization per pool | `PoolOpportunity.utilization` | Q3: exit liquidity trend | Daily | 90 days | P0 |
-| H3 | TVL per pool | `PoolOpportunity.tvl`, `PoolOpportunity.tvlUsd` | Q3: capital flight | Daily | 90 days | P0 |
+| H1 | APY per pool | present — `YieldBreakdown.base`, `YieldBreakdown.totalApy`, `YieldBreakdown.incentives[]` | Q1: yield stability | Daily | 90 days | P0 |
+| H2 | Utilization per pool | present — `PoolOpportunity.utilization` | Q3: exit liquidity trend | Daily | 90 days | P0 |
+| H3 | TVL per pool | present — `PoolOpportunity.tvl`, `PoolOpportunity.tvlUsd` | Q3: capital flight | Daily | 90 days | P0 |
 | H4 | Supply/borrow rates per pool | partial — `YieldBreakdown.base` and `StrategyOpportunity.borrowApy` exist; dedicated time-series types are missing | Q1: cost trend | Daily | 30 days | P1 |
-| H5 | Price of underlying per pool | `TokenRef.price` | Q2: volatility | Daily | 90 days | P1 |
-| H6 | HF per credit account | `UserStrategyPosition.healthFactor` | Stage 6: trend detection | Per-tx or daily | Lifetime | P1 |
+| H5 | Price of underlying per pool | present — `TokenRef.price` | Q2: volatility | Daily | 90 days | P1 |
+| H6 | HF per credit account | present — `UserStrategyPosition.healthFactor` | Stage 6: trend detection | Per-tx or daily | Lifetime | P1 |
 | H7 | Total value per credit account | missing — needs `UserStrategyPosition.totalValueUsd` | Stage 6: P&L baseline | Per-tx or daily | Lifetime | P1 |
 
 Notes:
@@ -735,10 +741,10 @@ These are on-chain events needed for the parameter change log and Stage 6 monito
 
 | # | Computation | Tech name references | Serves stage | Priority |
 |---|-------------|----------------------|-------------|----------|
-| C1 | Total APY (supply_rate + Merkl + protocol yield) | `YieldBreakdown.totalApy` | Stage 1: discovery filter | P0 |
+| C1 | Total APY (supply_rate + Merkl + protocol yield) | present — `YieldBreakdown.totalApy` | Stage 1: discovery filter | P0 |
 | C2 | Exposure chain per pool (tokens → LTs → debt limits → positions) | partial — `PoolOpportunity.collaterals[]` exists; a full exposure-chain type is missing | Stage 2: Q2 risk | P0 |
-| C3 | P&L per LP (deposit events + current share price) | `UserPoolPosition.pnl` | Stage 6: LP monitoring | P1 |
-| C4 | P&L per CA (position open + mutations + current state) | `UserStrategyPosition.pnl` | Stage 6: CA monitoring | P1 |
+| C3 | P&L per LP (deposit events + current share price) | present — `UserPoolPosition.pnl` | Stage 6: LP monitoring | P1 |
+| C4 | P&L per CA (position open + mutations + current state) | present — `UserStrategyPosition.pnl` | Stage 6: CA monitoring | P1 |
 | C5 | HF attribution (price deltas + LT changes + interest accrual) | missing — needs `HealthFactorAttribution` | Stage 6: CA monitoring | P1 |
 | C6 | Curator identity mapping (controller address → name) | partial — `Opportunity.curatorId` exists; `CuratorProfile` mapping is missing | Stage 2: Q4 trust | P2 |
 | C7 | Insurance coverage ratio (treasury balance vs total debt) | missing — needs insurance-fund and total-debt fields | Stage 2: Q2 risk | P1 |
@@ -767,19 +773,19 @@ These are the loss vectors specific to RWA/KYC that don't exist with standard De
 | Category | Tech name references | Count |
 |----------|----------------------|-------|
 | Curator profile fields (standalone) | missing — needs `CuratorProfile` | 7 |
-| Opportunity base fields (Stage 1) | `Opportunity` | 11 |
-| PoolOpportunity discovery extension fields | `PoolOpportunity` | 9 |
-| StrategyOpportunity discovery extension fields | `StrategyOpportunity` | 10 |
-| LP analyze fields (Stage 2a) | mixed — `YieldBreakdown` / `PoolCollateral` exist; many analytics fields are still missing | ~23 (+1: pending governance) |
-| CA analyze fields (Stage 2b) | mixed — `StrategyOpportunity` / `StrategyCollateral` exist; many analytics fields are still missing | ~24 (+5: entry cost, breakeven, risk_disclosure, pending gov, borrow rate xref) |
+| Opportunity base fields (Stage 1) | present — `Opportunity` | 11 |
+| PoolOpportunity discovery extension fields | present — `PoolOpportunity` | 9 |
+| StrategyOpportunity discovery extension fields | present — `StrategyOpportunity` | 10 |
+| LP analyze fields (Stage 2a) | partial —  `YieldBreakdown` / `PoolCollateral` exist; many analytics fields are still missing | ~23 (+1: pending governance) |
+| CA analyze fields (Stage 2b) | partial —  `StrategyOpportunity` / `StrategyCollateral` exist; many analytics fields are still missing | ~24 (+5: entry cost, breakeven, risk_disclosure, pending gov, borrow rate xref) |
 | LP preview fields (Stage 4) | missing — needs `TransactionPreview` | 8 (new) |
 | CA preview fields (Stage 4) | missing — needs `TransactionPreview`, `PreviewRoute`, and `RawTx` | 9 (new) |
-| LP monitoring fields (Stage 6a) | mixed — `UserPoolPosition` exists; pool-monitor delta fields are still missing | ~13 (+1: pending governance) |
-| CA monitoring fields (Stage 6b) | mixed — `UserStrategyPosition` / `UserCollateral` exist; monitor attribution fields are still missing | ~22 (+5: pending gov, emergency state bundle) |
+| LP monitoring fields (Stage 6a) | partial —  `UserPoolPosition` exists; pool-monitor delta fields are still missing | ~13 (+1: pending governance) |
+| CA monitoring fields (Stage 6b) | partial —  `UserStrategyPosition` / `UserCollateral` exist; monitor attribution fields are still missing | ~22 (+5: pending gov, emergency state bundle) |
 | RWA / KYC-specific extension fields | missing — needs `RwaAssetProfile` / `RwaComplianceProfile` | 32 |
 | Historical series | missing — needs history series types | 7 |
 | Event types to index | missing — needs `EventFeedItem` / `GovernanceChange` | 34 |
-| Computed aggregations | mixed — `YieldBreakdown.totalApy` / `PnlBreakdown` exist; several computed types are still missing | 7 |
+| Computed aggregations | partial —  `YieldBreakdown.totalApy` / `PnlBreakdown` exist; several computed types are still missing | 7 |
 
 **Data types breakdown:**
 
