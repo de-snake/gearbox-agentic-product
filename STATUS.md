@@ -15,6 +15,7 @@ This share repo is now organized around a single final deliverable: `agentic-dat
   - `call-transcripts/`
   - `specific-research/`
   - `working-notes/`
+- Added `raw-data/dev-docs/` as tracked developer-facing draft documentation.
 - Rewrote the root README to explain navigation and the information flow that produced the final output.
 
 ## Review path

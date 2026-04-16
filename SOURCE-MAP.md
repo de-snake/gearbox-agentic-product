@@ -28,6 +28,14 @@ This repo is a curated extraction from the original Gearbox workspace.
 | `/Users/ilya/ai-assistant/projects/gearbox/agent-sdk-api/research/3AprAnalysis.md` | `raw-data/working-notes/2026-04-03-call-analysis-and-action-items.md` |
 | `/Users/ilya/ai-assistant/projects/gearbox/gearbox-securities.md` | `references/gearbox-tokenized-securities.md` |
 
+## Additional local supporting docs
+
+These files were added directly from the local draft docs folder rather than from the original `agent-sdk-api` extraction.
+
+| Current path | Note |
+|---|---|
+| `raw-data/dev-docs/*.mdx` | Draft developer docs covering overview, MCP setup, agent loop, architecture, preview, execution, and onboarding. |
+
 ## Excluded for now
 
 | Original path | Status |

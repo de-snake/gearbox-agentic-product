@@ -35,6 +35,10 @@ That document is the merged backend handoff. It combines the original backend da
 - `raw-data/working-notes/`
   - Intermediate notes used to reconcile transcripts, compare documents, and turn discovery into a concrete backend handoff.
 
+- `raw-data/dev-docs/`
+  - Developer-facing draft docs for the same product surface.
+  - Covers overview, MCP setup, agent loop, architecture, preview, execution, and first-agent onboarding.
+
 - `references/`
   - External reference documents used where the final output depends on partner-protocol or compliance-specific architecture.
 
@@ -99,7 +103,8 @@ That is why the output is not organized as "all available pool fields" or "all c
 Included:
 - the merged final handoff document,
 - the architecture docs that explain the stage model,
-- the raw source material that explains why the document looks the way it does.
+- the raw source material that explains why the document looks the way it does,
+- the developer-facing draft docs in `raw-data/dev-docs/`.
 
 Excluded for now:
 - write operations and error-handling spec,

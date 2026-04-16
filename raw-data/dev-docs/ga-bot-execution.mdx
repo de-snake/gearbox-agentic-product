@@ -1,0 +1,75 @@
+---
+title: "Bot Execution"
+order: 112
+---
+
+Bot Execution mode allows an agent to operate autonomously on-chain, but within strictly bounded permissions. The agent has its own address with explicit, revocable permissions granted per Credit Account.
+
+## How It Works
+
+The Gearbox [Bot System](/developers/gm-bots) provides granular permission control:
+
+1. **Account owner grants permissions** — specific operations allowed for a specific bot on a specific account
+2. **Agent executes via `botMulticall`** — operations go through CreditFacade with permission checks
+3. **Protocol enforces boundaries** — any unpermitted operation reverts the transaction
+4. **Solvency check still applies** — bot multicalls undergo the same HF >= 1 check as user multicalls
+
+## Permission Bitmask
+
+Each permission is a bit flag. The account owner composes a bitmask of allowed operations:
+
+| Permission | What the Bot Can Do |
+| --- | --- |
+| `ADD_COLLATERAL` | Deposit tokens into the account |
+| `INCREASE_DEBT` | Borrow more from the pool |
+| `DECREASE_DEBT` | Repay debt |
+| `WITHDRAW_COLLATERAL` | Remove tokens from the account |
+| `UPDATE_QUOTA` | Adjust token quotas |
+| `EXTERNAL_CALLS` | Call DeFi protocols via adapters |
+
+An agent managing a yield strategy might need `ADD_COLLATERAL | EXTERNAL_CALLS | UPDATE_QUOTA` but explicitly **not** `WITHDRAW_COLLATERAL` — preventing it from removing funds.
+
+## Safety Model
+
+- **Scoped** — permissions are per `(bot, creditManager, creditAccount)` tuple. One bot's permissions on one account don't affect any other.
+- **Revocable** — the account owner can revoke at any time by setting permissions to 0
+- **Immutable boundary** — bots cannot modify their own permissions
+- **DAO forbid list** — the DAO can globally forbid a malicious bot address
+- **Same solvency rules** — bot operations undergo identical collateral checks
+
+## Monitoring Bot Activity
+
+The agent (or a separate monitor) should track bot state:
+
+```typescript
+const position = await sdk.accounts.getStatus({
+  chainId: "Mainnet",
+  creditAccount: accountAddress,
+});
+
+// Check active bots
+for (const bot of position.bots) {
+  console.log(`Bot: ${bot.address}, permissions: ${bot.permissions}`);
+}
+```
+
+## When to Use
+
+| Scenario | Recommendation |
+| --- | --- |
+| Automated rebalancing | Bot with EXTERNAL_CALLS + UPDATE_QUOTA |
+| Liquidation protection | Bot with ADD_COLLATERAL + DECREASE_DEBT |
+| Full autonomy | Bot with all permissions (high trust required) |
+| Withdrawal needed | Prefer [Human-in-the-Loop](/developers/ga-human-loop) |
+
+## Combining Both Modes
+
+A common pattern: use **Bot Execution** for routine operations (rebalancing, quota adjustments) and **Human-in-the-Loop** for high-impact actions (opening new positions, withdrawals, strategy changes).
+
+The agent runs autonomously within its bounded permissions, but when it needs to do something outside those bounds, it generates a preview URL for human approval.
+
+## Learn More
+
+- [Human-in-the-Loop](/developers/ga-human-loop) — preview + verify flow for human approval
+- [Bot System](/developers/gm-bots) — detailed bot permission mechanics
+- [The Agent Loop](/developers/ga-agent-loop) — how execution fits in the 6-step cycle

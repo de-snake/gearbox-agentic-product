@@ -1,0 +1,34 @@
+---
+title: "Execution"
+order: 105
+---
+
+How agents interact with the Gearbox protocol on-chain — and why it's safe.
+
+## The Security Model
+
+A core principle of Gearbox Agentic: **the SDK builds transactions, but never signs them**. Transaction construction (what to do) is separated from transaction execution (actually doing it). This creates a clear security boundary.
+
+Every transaction goes through **preview** before execution:
+
+1. **Build** — `sdk.positions.prepareOpen()` → produces a `RawTx { to, calldata, value }`
+2. **Preview** — `sdk.previewTransaction(rawTx)` → simulates the exact bytes, returns success, health factor, actions, balance changes, warnings
+3. **Validate** — agent (or human) checks: success = true, HF > threshold, no critical warnings
+4. **Execute** — sign and send via wallet
+
+The same bytes that were previewed are the bytes that go on-chain. No deviation.
+
+## Two Execution Modes
+
+| Mode | Trust Level | Best For |
+| --- | --- | --- |
+| [**Human-in-the-Loop**](/developers/ga-human-loop) | Agent proposes, human approves | High-value positions, institutional compliance, initial trust building |
+| [**Bot Execution**](/developers/ga-bot-execution) | Agent executes autonomously within bounds | Rebalancing, liquidation monitoring, automated management |
+
+Both modes use the same preview mechanism. The difference is who signs.
+
+## Learn More
+
+- [Human-in-the-Loop](/developers/ga-human-loop) — verify.gearbox.finance approval flow
+- [Bot Execution](/developers/ga-bot-execution) — bounded on-chain permissions
+- [The Agent Loop](/developers/ga-agent-loop) — how Preview and Execute fit in the 6-step cycle

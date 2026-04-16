@@ -1,0 +1,43 @@
+---
+title: "Gearbox Agentic Overview"
+order: 100
+---
+
+Gearbox Agentic is AI-powered capital management built on top of Gearbox Credit Accounts. Autonomous agents discover yield opportunities, analyze risk, build transactions, preview exact on-chain outcomes, execute, and monitor positions — all through a structured loop and a single SDK.
+
+## What It Does
+
+An AI agent manages DeFi capital across chains using the Gearbox SDK. The SDK handles protocol complexity — the agent handles decisions. The SDK builds transactions and previews outcomes but **never signs or sends** — execution stays with the caller.
+
+## The 6-Step Agent Loop
+
+Every agent interaction follows the same structured cycle:
+
+| Step | Purpose | Who Decides |
+| --- | --- | --- |
+| **Discover** | Scan all current opportunities | SDK returns data |
+| **Analyze** | Due diligence on shortlisted candidates | Agent reasons over data |
+| **Propose** | Find optimal rebalance — or decide to do nothing | Agent + Router |
+| **Preview** | Verify on-chain feasibility right now | SDK simulates |
+| **Execute** | Sign and submit | User or agent via bot API |
+| **Monitor** | React to events that require response | SDK returns live state |
+
+[Read more about the Agent Loop](/developers/ga-agent-loop)
+
+## Two Execution Modes
+
+### Preview + Verify (Human-in-the-Loop)
+
+The agent builds and previews a transaction, then encodes the preview as a URL for [verify.gearbox.finance](https://verify.gearbox.finance). A human reviews decoded calldata, balance changes, and health factor projections before signing.
+
+### Bot Permissions (Autonomous)
+
+The agent operates with bounded on-chain autonomy via a permission bitmask on a Credit Account. It cannot exceed its granted authority.
+
+[Read more about Execution](/developers/ga-execution)
+
+## Learn More
+
+- [Concepts](/developers/ga-concepts) — Agent Loop, Architecture & Tools, MCP Server
+- [Getting Started](/developers/ga-start) — MCP Setup and First Agent tutorial
+- [Execution](/developers/ga-execution) — Human-in-the-Loop and Bot Execution

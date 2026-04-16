@@ -1,0 +1,102 @@
+---
+title: "MCP Setup"
+order: 107
+---
+
+Connect the Gearbox MCP server to your AI coding tool and start interacting with the protocol.
+
+## Installation
+
+Add the Gearbox MCP server to your client. The configuration is the same across all clients — just the config file location differs.
+
+```json
+{
+  "mcpServers": {
+    "gearbox": {
+      "command": "npx",
+      "args": ["@gearbox-protocol/mcp-server"]
+    }
+  }
+}
+```
+
+### Where to put this config
+
+| Client | Config File |
+| --- | --- |
+| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
+| **Claude Code** | `.claude/settings.json` (project) or `~/.claude/settings.json` (global) |
+| **VS Code (Copilot)** | `.vscode/settings.json` — use `"mcp": { "servers": { ... } }` format |
+| **Cursor** | `.cursor/mcp.json` in project root |
+| **Windsurf** | `~/.codeium/windsurf/mcp_config.json` |
+
+After adding the config, restart your client.
+
+## Verify the Connection
+
+Once configured, restart your MCP client and verify the connection by asking the agent to list available opportunities:
+
+> List all available Gearbox yield opportunities on Mainnet
+
+The agent should call `list_opportunities` and return a list of pools and strategies with APY, TVL, and access information. If you see results, the setup is working.
+
+## What You Can Do
+
+The MCP server exposes 16 tools organized by the agent loop stages:
+
+### Discover
+
+| Tool                 | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| `list_opportunities` | Find opportunities across chains, filtered by asset type, chain, and kind |
+| `list_pools`         | List pool (passive lending) opportunities            |
+| `list_strategies`    | List strategy (leveraged) opportunities              |
+
+### Analyze
+
+| Tool                 | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| `get_pool_detail`    | Full pool detail: allowed tokens, rates, capacity    |
+| `get_strategy_detail`| Strategy detail: leverage, collaterals, exit modes   |
+| `get_metric_history` | Historical APY, TVL, utilization over a time period  |
+| `get_events`         | Recent parameter changes and governance events       |
+| `get_curator`        | Curator profile: track record, bad debt history, managed TVL |
+| `get_token_info`     | Token profiles and metadata                          |
+| `get_token_liquidity`| On-chain liquidity depth and market data             |
+
+### Propose
+
+| Tool                 | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| `prepare_deposit`    | Build a deposit transaction for a pool               |
+| `prepare_position`   | Build a leveraged position transaction for a strategy|
+
+### Preview
+
+| Tool                 | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| `simulate_deposit`   | Simulate a deposit and see expected outcomes         |
+| `simulate_position`  | Simulate a leveraged position opening                |
+
+### Execute & Monitor
+
+| Tool                 | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| `execute_transaction`| Submit a prepared transaction to the blockchain      |
+| `get_pool_status`    | Current pool state: rates, utilization, TVL          |
+| `get_position_status`| Current position health factor, value, and alerts    |
+
+## Multi-Chain Support
+
+All tools are chain-aware. You can query across multiple chains or target a specific one:
+
+> Show me stablecoin opportunities on both Mainnet and Monad
+
+> Get pool details for 0x... on chain 1
+
+Every entity reference includes a `chainId`, so there is no ambiguity when the same token or contract exists on multiple chains.
+
+## Next Steps
+
+- [First Agent](/developers/ga-first-agent) — walk through a complete discover-to-preview flow using MCP tools
+- [Getting Started](/developers/ga-start) — overview of both integration paths
