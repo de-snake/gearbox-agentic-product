@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-06
 **Status:** Draft for review
-**Input:** ../agentic-data-flow.md, 3AprCall transcript, ../raw-data/working-notes/2026-04-03-team-updated-spec.md (team's tool spec), analysis session
+**Input:** ../outputs/agentic-data-flow.md, 3AprCall transcript, ../raw-data/source-docs/2026-04-03-team-updated-spec.md (team's tool spec), analysis session
 
 ---
 
@@ -246,7 +246,7 @@ Take each allocation decision and test it against real chain state. Produce go/n
 AllocationDecision entries.
 
 ### Data needed from API (new — not in agentic-data-flow)
-These are the fields from the team's tool spec (../raw-data/working-notes/2026-04-03-team-updated-spec.md) that our spec currently ignores:
+These are the fields from the team's tool spec (../raw-data/source-docs/2026-04-03-team-updated-spec.md) that our spec currently ignores:
 
 **LP preview:**
 - expected_shares at deposit amount

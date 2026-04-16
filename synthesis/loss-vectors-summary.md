@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-31
 **Purpose:** Systematic identification of all ways LP and CA agents can lose money. Feeds into Phase 3 entity definitions.
-**Detail:** This is a summary. For on-chain mechanisms, contract calls, code examples, and monitoring logic, see 2026-03-31-lp-loss-vectors-on-chain.md (LP) and 2026-03-31-credit-account-loss-vectors-on-chain.md (CA).
+**Detail:** This is a summary. For on-chain mechanisms, contract calls, code examples, and monitoring logic, see ../raw-data/specific-research/2026-03-31-lp-loss-vectors-on-chain.md (LP) and ../raw-data/specific-research/2026-03-31-credit-account-loss-vectors-on-chain.md (CA).
 
 ---
 

@@ -35,7 +35,7 @@ Some fields appear in both snapshot and history — the agent needs the current 
 Agent ──→ api.gearbox.finance (SDK) ──→ on-chain + backend
 ```
 
-**Agent pipeline** (investment firm analogy — see architecture/staged-agent-architecture.md for full design):
+**Agent pipeline** (investment firm analogy — see ../synthesis/staged-agent-architecture.md for full design):
 
 ```text
 Scout ──shortlist──→ Analyst ──memos──→ Committee ──allocation──→ Exec Desk ──receipts──→ Ops
@@ -45,7 +45,7 @@ Scout ──shortlist──→ Analyst ──memos──→ Committee ──allo
 
 Six information stages: **Discover → Evaluate → Propose → Preview → Execute → Monitor**.
 
-Each stage acts as a compression layer. The scout doesn't dump 50 pool records on the analyst — it passes a ranked shortlist of 3–5 with a sentence each on why. The analyst doesn't dump 90-day price history on the committee — it passes computed facts with evidence (see architecture/memo-standard.md).
+Each stage acts as a compression layer. The scout doesn't dump 50 pool records on the analyst — it passes a ranked shortlist of 3–5 with a sentence each on why. The analyst doesn't dump 90-day price history on the committee — it passes computed facts with evidence (see ../synthesis/memo-standard.md).
 
 This document covers the **API data requirements** for each stage. The handoff contracts (what each stage receives and passes forward) are included to show WHY each field matters at a system level.
 
@@ -402,7 +402,7 @@ The existing Q2-CA covers generic collateral safety (LT, oracle, exit feasibilit
 
 ### Handoff: Evaluate → Propose (Research Memo)
 
-The analyst produces a structured Research Memo per candidate — the critical compression layer. Full standard defined in architecture/memo-standard.md. Key principle: evidence-backed compression, never interpretive labels.
+The analyst produces a structured Research Memo per candidate — the critical compression layer. Full standard defined in ../synthesis/memo-standard.md. Key principle: evidence-backed compression, never interpretive labels.
 
 ```typescript
 interface ResearchMemo {
@@ -800,7 +800,7 @@ These are the loss vectors specific to RWA/KYC that don't exist with standard De
 - event log (change records): 34 event types — backend indexes on-chain events
 - merged RWA / KYC extension: 32 additional stage-specific fields, primarily snapshot fields with one dedicated event-log stream for whitelist changes
 
-**Handoff contracts defined:** AgentTask → Shortlist → ResearchMemo → AllocationDecision → ExecutionPlan. See architecture/staged-agent-architecture.md and architecture/memo-standard.md for full definitions.
+**Handoff contracts defined:** AgentTask → Shortlist → ResearchMemo → AllocationDecision → ExecutionPlan. See ../synthesis/staged-agent-architecture.md and ../synthesis/memo-standard.md for full definitions.
 
 **Stage numbering:** Stages 1-2 (Discover, Evaluate) are the original spec. Stage 3 (Propose) and Stage 4 (Preview) are new. Stage 5 (Monitor) was previously Stage 3. Renumbered to match the 6-stage pipeline.
 
