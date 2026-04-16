@@ -14,7 +14,7 @@ This structure is meant to be easy to navigate for both people and agents.
 
 Start with:
 
-- `outputs/agentic-data-flow/0.introduction.md`
+- `outputs/agentic-data-flow/00.introduction.md`
 
 This is the entry point to the main deliverable folder.
 
@@ -87,21 +87,21 @@ This layer contains the final documents that someone should review or implement 
 
 Right now the main output is the split folder:
 
-- `outputs/agentic-data-flow/0.introduction.md`
+- `outputs/agentic-data-flow/00.introduction.md`
 - plus the numbered stage and appendix files beside it
 
 ## Recommended reading order
 
 ### For a human reviewer
 
-1. `outputs/agentic-data-flow/0.introduction.md`
+1. `outputs/agentic-data-flow/00.introduction.md`
 2. `synthesis/loss-vectors-summary.md`
 3. `synthesis/staged-agent-architecture.md`
 4. dive into `raw-data/` only where needed
 
 ### For an agent
 
-1. load `outputs/agentic-data-flow/0.introduction.md`
+1. load `outputs/agentic-data-flow/00.introduction.md`
 2. use `synthesis/` to recover the decision logic behind the structure
 3. use `raw-data/` only when primary evidence is needed
 

@@ -1,7 +1,7 @@
 # Apr 3 Call — Analysis & Action Items
 
 **Source:** ../raw-data/call-transcripts/2026-04-03-product-call-transcript.md (transcript), ../raw-data/source-docs/2026-04-03-team-updated-spec.md (their updated spec)
-**Compared against:** ../outputs/agentic-data-flow/0.introduction.md (our spec)
+**Compared against:** ../outputs/agentic-data-flow/00.introduction.md (our spec)
 
 ---
 

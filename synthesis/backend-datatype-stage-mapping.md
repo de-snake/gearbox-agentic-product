@@ -1,7 +1,7 @@
 # Backend Datatype Stage Mapping
 
 **Sources:**
-- `../outputs/agentic-data-flow/0.introduction.md`
+- `../outputs/agentic-data-flow/00.introduction.md`
 - numbered stage and appendix files under `../outputs/agentic-data-flow/`
 - `../raw-data/dev-docs/types_.ts`
 

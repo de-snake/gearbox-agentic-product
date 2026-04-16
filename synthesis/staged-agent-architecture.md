@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-16
 **Status:** Synced to the latest developer-doc structure
-**Primary output this architecture feeds:** `../outputs/agentic-data-flow/0.introduction.md` plus the numbered stage files under `../outputs/agentic-data-flow/`
+**Primary output this architecture feeds:** `../outputs/agentic-data-flow/00.introduction.md` plus the numbered stage files under `../outputs/agentic-data-flow/`
 **Source basis:**
 
 - `../raw-data/dev-docs/ga-overview.mdx`
@@ -27,7 +27,7 @@ It supersedes the older investment-firm-language draft as the canonical stage mo
 
 That is the structure the SDK, MCP server, preview flow, and execution modes are now organized around.
 
-`../outputs/agentic-data-flow/0.introduction.md` is the entry point to the split output spec. The numbered stage files define what data the system needs to serve. This document defines how an agent consumes that data across stages, what each stage produces, and where loop-backs happen.
+`../outputs/agentic-data-flow/00.introduction.md` is the entry point to the split output spec. The numbered stage files define what data the system needs to serve. This document defines how an agent consumes that data across stages, what each stage produces, and where loop-backs happen.
 
 ---
 
@@ -221,7 +221,7 @@ interface AnalyzedOpportunity {
 
 ### Relation to `agentic-data-flow`
 
-`../outputs/agentic-data-flow/0.introduction.md` is the entry point, but the numbered files under `../outputs/agentic-data-flow/` should be read as the fact base for each stage.
+`../outputs/agentic-data-flow/00.introduction.md` is the entry point, but the numbered files under `../outputs/agentic-data-flow/` should be read as the fact base for each stage.
 
 - Discover explains what to scan.
 - Analyze explains what to inspect.
@@ -508,7 +508,7 @@ The most important updates are:
 
 When using this repo:
 
-1. read `../outputs/agentic-data-flow/0.introduction.md`, then the numbered stage files, for required data surfaces
+1. read `../outputs/agentic-data-flow/00.introduction.md`, then the numbered stage files, for required data surfaces
 2. read this document for loop structure and stage contracts
 3. read `memo-standard.md` for how Analyze compresses evidence
 4. use `../raw-data/dev-docs/` as the primary evidence for the latest structure

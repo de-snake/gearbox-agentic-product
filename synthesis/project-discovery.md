@@ -360,7 +360,7 @@ Completed in the internal flow-mapping document (not included in this share repo
 
 ### Phase 3: Information Architecture [DONE]
 
-Completed in the internal information-architecture document (not included in this share repo). 7 entities defined with loss-vector-grounded properties, relationship map, and consumer matrix. Backend handoff spec in ../outputs/agentic-data-flow/0.introduction.md and the numbered files under ../outputs/agentic-data-flow/.
+Completed in the internal information-architecture document (not included in this share repo). 7 entities defined with loss-vector-grounded properties, relationship map, and consumer matrix. Backend handoff spec in ../outputs/agentic-data-flow/00.introduction.md and the numbered files under ../outputs/agentic-data-flow/.
 
 ### Phase 4: Handoff to Shaping [DONE]
 
