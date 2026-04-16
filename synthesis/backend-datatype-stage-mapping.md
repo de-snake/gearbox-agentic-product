@@ -4,217 +4,162 @@
 - `../outputs/agentic-data-flow.md`
 - `../raw-data/dev-docs/types_.ts`
 
-This document maps the backend datatypes drafted in `types_.ts` to the stages in `../outputs/agentic-data-flow.md`.
+This document keeps `../outputs/agentic-data-flow.md` readable by using human-readable data-group names, then maps those groups back to exact technical references from `types_.ts`.
 
 Its purpose is to answer three questions:
 
-1. which backend datatype is used at which stage,
-2. what decision that datatype supports,
-3. what stage-critical data is still missing from `types_.ts`.
+1. what data is used at each stage,
+2. what agent question that data answers,
+3. which stage-critical backend types are still missing from `types_.ts`.
+
+---
+
+## How to read this file
+
+| Column | Meaning |
+|---|---|
+| Human-readable data name | The label that should stay readable in `agentic-data-flow.md`. |
+| Agent story | The concrete question the agent is trying to answer. |
+| Tech name references | Exact field or type references tied to that data group. |
+| Coverage in `types_.ts` | Whether the current backend draft already covers it, partially covers it, or does not cover it yet. |
+
+Interpretation rule: if a row has no usable `types_.ts` reference, that is a real backend gap, not just a naming issue.
 
 ---
 
 ## High-level coverage summary
 
-| Stage | Backend datatypes already present in `types_.ts` | Primary use | Main gaps in `types_.ts` |
-|---|---|---|---|
-| Discover | `Opportunity`, `PoolOpportunity`, `StrategyOpportunity`, `TokenRef`, `YieldBreakdown`, `LeveragedYieldBreakdown`, `PoolCollateral`, `StrategyCollateral` | unified opportunity scan and first-pass filtering | explicit discover query type, curator profile type |
-| Analyze — pool path | `PoolOpportunity`, `YieldBreakdown`, `PoolCollateral`, `TokenRef` | pool yield, liquidity, collateral exposure | curator profile, historical metric points, governance / event feed, oracle metadata, insurance snapshot |
-| Analyze — strategy path | `StrategyOpportunity`, `LeveragedYieldBreakdown`, `YieldBreakdown`, `StrategyCollateral`, `TokenRef` | strategy economics, leverage bounds, collateral surface | curator profile, event feed, oracle metadata, route-specific detail, RWA compliance detail |
-| Propose | no dedicated backend type yet; consumes analyzed data | choose action or no-op, build transaction intent | `RawTx`, proposed-action type, route result type |
-| Preview | no dedicated backend type yet | simulate exact transaction and validate outcomes | `TransactionPreview`, `BalanceChange`, `PreviewAction`, `PreviewRoute`, `ExitInfo`, execution-ready type |
-| Execute | no dedicated backend type yet | sign / submit exact previewed bytes | execution mode type, verifier payload type, bot permission surface |
-| Monitor — pool path | `UserPoolPosition`, `YieldBreakdown<ClaimableIncentive>`, `PnlBreakdown` | pool-position state, claimables, P&L | alerts, governance diff, insurance change, utilization history envelope |
-| Monitor — strategy path | `UserStrategyPosition`, `UserCollateral`, `YieldBreakdown<ClaimableIncentive>`, `PnlBreakdown` | position state, debt, Health Factor, claimables, collateral state | Health Factor attribution, delayed-withdrawal state, oracle freshness, emergency-state bundle, bot-state type |
+| Stage | Strong coverage already present | Largest missing pieces |
+|---|---|---|
+| Discover | `Opportunity`, `PoolOpportunity`, `StrategyOpportunity`, `TokenRef`, `YieldBreakdown`, `LeveragedYieldBreakdown`, collateral types | discover-query input type, `CuratorProfile` |
+| Analyze | first-pass opportunity, yield, collateral, and token primitives | history series, governance/event feed, oracle metadata, RWA asset/compliance profiles |
+| Propose | no canonical backend types yet | `RawTx`, proposed-action envelope, route result |
+| Preview | no canonical backend types yet | `TransactionPreview`, decoded actions, balance changes, route detail, exit info |
+| Execute | no canonical backend types yet | execution mode, reviewer payload, bot permission state |
+| Monitor | `UserPoolPosition`, `UserStrategyPosition`, `UserCollateral`, `YieldBreakdown<ClaimableIncentive>`, `PnlBreakdown` | alerts, Health Factor attribution, delayed-withdrawal state, oracle freshness, emergency state |
 
 ---
-
-## Stage-by-stage mapping
 
 ## Stage 1 — Discover
 
-### Types already drafted
+| Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
+|---|---|---|---|
+| Opportunity identity | "What is this opportunity, and how do I refer to it later?" | `Opportunity.id`, `Opportunity.type`, `Opportunity.title` | Covered |
+| Routing context | "Which chain and base asset is this on?" | `Opportunity.chainId`, `Opportunity.underlyingToken: TokenRef` | Covered |
+| Curator reference | "Whose opportunity is this?" | `Opportunity.curatorId` | Partially covered — reference exists, but `CuratorProfile` does not |
+| Access parameters | "Do I need to do anything before I can use this opportunity?" | `Opportunity.access.permissionless`, `Opportunity.access.kycRequired`, `Opportunity.access.kycUrl` | Covered |
+| Discovery risk hints | "Is there anything I should notice before I analyze this?" | `Opportunity.risk.summary`, `Opportunity.risk.warnings` | Covered |
+| Pool headline snapshot | "What does this pool pay, how large is it, and how liquid is it?" | `PoolOpportunity.yield`, `PoolOpportunity.supplied`, `PoolOpportunity.borrowed`, `PoolOpportunity.utilization`, `PoolOpportunity.tvl`, `PoolOpportunity.tvlUsd`, `PoolOpportunity.availableLiquidity` | Covered |
+| Pool collateral surface | "What collateral exposure am I inheriting by lending here?" | `PoolOpportunity.collaterals: PoolCollateral[]` | Covered |
+| Strategy sizing bounds | "Can I enter at the size I want?" | `StrategyOpportunity.minDebt`, `StrategyOpportunity.maxDebt` | Covered |
+| Strategy capacity and leverage | "How much room is left, and how much leverage is available?" | `StrategyOpportunity.borrowableLiquidity`, `StrategyOpportunity.maxLeverage`, `StrategyOpportunity.borrowApy` | Covered |
+| Strategy headline economics | "What is the best visible leveraged outcome here?" | `StrategyOpportunity.maxLeverageYield: LeveragedYieldBreakdown`, `StrategyOpportunity.bestBaseYield: YieldBreakdown` | Covered |
+| Strategy collateral and operating flags | "Which collateral paths exist, and is the strategy currently usable?" | `StrategyOpportunity.collaterals: StrategyCollateral[]`, `StrategyOpportunity.isPaused`, `StrategyOpportunity.hasDelayedWithdrawal` | Covered |
+| Discover query surface | "How do I ask the backend for the subset I want to scan?" | implied query fields such as `chainIds`, `types`, `assets`, access filters | Missing — no discover-query input type is drafted yet |
 
-| Type | Used for in the stage |
-|---|---|
-| `Opportunity` | shared envelope for any discoverable item |
-| `PoolOpportunity` | lending-pool opportunity surface |
-| `StrategyOpportunity` | leveraged-strategy opportunity surface |
-| `TokenRef` | underlying token identity |
-| `YieldBreakdown` | pool or base-yield summary |
-| `LeveragedYieldBreakdown` | leveraged strategy headline economics |
-| `PoolCollateral` | first-pass pool exposure surface |
-| `StrategyCollateral` | first-pass strategy collateral surface |
-
-### How the stage uses them
-
-- `Opportunity` is the base discover object.
-- `PoolOpportunity` and `StrategyOpportunity` are the two concrete variants currently used in the data flow.
-- Discovery no longer branches into separate LP and leverage product lanes before the scan.
-- The agent receives a unified opportunity feed, then narrows it agent-side.
-
-### Missing in `types_.ts`
-
-| Missing datatype | Why it matters |
-|---|---|
-| `CuratorProfile` | discovery already carries `curatorId`, but the follow-up profile type is not defined |
-| discover-query input type | the docs imply filters like `chainIds`, `types`, `assets`, and access filters, but `types_.ts` does not formalize that request shape |
-
-### Note
-
-`OpportunityKind` includes `"market"`, but the current data-flow document only uses `pool` and `strategy`. That is not a missing type. It is an unused branch in the current output design.
+Note: `OpportunityKind` includes `"market"`, but the current output flow only uses `pool` and `strategy`. That is an unused branch, not a missing type.
 
 ---
 
-## Stage 2 — Analyze
+## Stage 2a — Analyze (pool path)
 
-### Pool analysis path
+| Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
+|---|---|---|---|
+| Yield sustainability view | "Where does pool yield come from, and has it been stable enough to trust?" | `PoolOpportunity.yield: YieldBreakdown`, plus historical supply-rate / incentive-rate / total-APY series referenced by the output doc | Partial — `YieldBreakdown` exists, but historical metric series do not |
+| Pool exposure surface | "What could create bad debt in this pool?" | `PoolOpportunity.collaterals: PoolCollateral[]`, `PoolCollateral.token`, `PoolCollateral.quotaLimit`, `PoolCollateral.quotaUsed`, `PoolCollateral.quotaRate` | Partial — first-pass collateral data exists, but per-CM risk-envelope types do not |
+| Liquidity and exit surface | "Can I get out when I need to?" | `PoolOpportunity.availableLiquidity`, `PoolOpportunity.utilization`, `PoolOpportunity.supplied`, `PoolOpportunity.borrowed`, `PoolOpportunity.tvl`, plus IRM / withdrawal-fee / utilization-history fields referenced by the output doc | Partial — liquidity snapshot exists, but IRM type and history series do not |
+| Curator and governance context | "Who manages this pool, and what could they change after I deposit?" | `Opportunity.curatorId`, `/curators` profile fields, parameter-change log, pending governance changes | Missing — needs `CuratorProfile`, `GovernanceChange`, `EventFeedItem` |
+| Oracle and insurance context | "How is risk priced, and what buffer exists if things go wrong?" | oracle methodology, reserve pricing, insurance-fund snapshot | Missing — no oracle metadata or insurance snapshot types are drafted |
+| RWA-specific pool exposure | "Does this pool have RWA-specific liquidation or compliance risk?" | frozen-account counts, frozen-account debt, whitelisted-liquidator count, transfer-restriction type, off-chain asset profile fields | Missing — needs `RwaAssetProfile` / `RwaComplianceProfile` plus RWA pool-risk types |
 
-| Type | Used for in the stage |
-|---|---|
-| `PoolOpportunity` | reused as the main pool snapshot |
-| `YieldBreakdown` | yield decomposition and incentive framing |
-| `PoolCollateral` | collateral and quota exposure surface |
-| `TokenRef` | token identity and pricing context |
+---
 
-### Strategy analysis path
+## Stage 2b — Analyze (strategy path)
 
-| Type | Used for in the stage |
-|---|---|
-| `StrategyOpportunity` | reused as the main strategy snapshot |
-| `LeveragedYieldBreakdown` | net leveraged yield framing |
-| `YieldBreakdown` | best base yield and collateral-level yield components |
-| `StrategyCollateral` | leverage constraints, LT surface, collateral yield |
-| `TokenRef` | underlying and collateral identity |
-
-### Missing in `types_.ts`
-
-| Missing datatype | Why it matters |
-|---|---|
-| `CuratorProfile` | analyze depends on track record, bad debt history, and curator metadata |
-| historical metric point / series types | analyze uses APY, TVL, utilization, and borrow-rate history |
-| event feed / governance change type | analyze depends on parameter changes and pending governance |
-| oracle / pricing metadata type | analyze needs oracle methodology, staleness, and reserve-price context |
-| RWA compliance / off-chain asset profile | analyze includes issuer, redemption mechanics, NAV frequency, transfer restriction type, and KYC gating |
-
-### Stage-local synthesis type
-
-The current output document defines `AnalyzedOpportunity` as a stage-local compressed result. This is not yet a backend draft type in `types_.ts`.
+| Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
+|---|---|---|---|
+| Strategy economics snapshot | "What does this position cost, and is the yield worth it?" | `StrategyOpportunity.borrowApy`, `StrategyOpportunity.maxLeverageYield`, `StrategyOpportunity.bestBaseYield`, `StrategyOpportunity.collaterals[].yield` | Partial — headline economics exist, but historical series and entry-cost types do not |
+| Collateral risk envelope | "How safe is the collateral, and what leverage or LT constraints apply?" | `StrategyOpportunity.collaterals: StrategyCollateral[]`, `StrategyCollateral.token`, `StrategyCollateral.liquidationThreshold`, `StrategyCollateral.quotaLimit`, `StrategyCollateral.quotaUsed`, `StrategyCollateral.quotaRate` | Partial — LT and quota surface exist, but forbidden-token and LT-ramp types do not |
+| Exit feasibility and delayed withdrawals | "If I need to unwind, what paths are actually available?" | `StrategyOpportunity.minDebt`, `StrategyOpportunity.maxDebt`, `StrategyOpportunity.borrowableLiquidity`, `StrategyOpportunity.hasDelayedWithdrawal`, `UserCollateral.expectedWithdrawalTimestamp` | Partial — there is an early delayed-withdrawal signal, but no full delayed-withdrawal state |
+| Oracle and pricing context | "How is this collateral priced, and can that pricing fail in practice?" | oracle methodology, main/reserve oracle history, staleness windows | Missing — no oracle metadata types are drafted |
+| RWA asset and compliance context | "What off-chain or compliance constraints does this collateral bring into the position?" | issuer, asset type, redemption mechanics, NAV update frequency, transfer restriction, KYC/access properties | Missing — needs `RwaAssetProfile` / `RwaComplianceProfile` |
+| Analyze handoff compression | "What compact result should Analyze pass into Propose?" | `AnalyzedOpportunity` in the output doc | Missing — stage-local synthesis type is not drafted in `types_.ts` |
 
 ---
 
 ## Stage 3 — Propose
 
-### Types already drafted
-
-No dedicated backend-return type exists yet in `types_.ts`.
-
-This stage primarily consumes analyzed data and router results, then produces a proposed action.
-
-### Missing in `types_.ts`
-
-| Missing datatype | Why it matters |
-|---|---|
-| `RawTx` | the canonical unsigned transaction shape used by Preview |
-| proposed-action type | the stage needs a typed output for deposit / open / rebalance / do-nothing decisions |
-| route result type | the stage depends on route-building output when constructing strategy actions |
+| Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
+|---|---|---|---|
+| Proposed action set | "What should I do next: deposit, open, rebalance, reduce, close, or do nothing?" | `ProposedAction` from `agentic-data-flow.md` | Missing — no proposed-action type is drafted yet |
+| Transaction bytes | "What exact transaction do I want Preview to simulate?" | `RawTx` from `agentic-data-flow.md` | Missing |
+| Route-building result | "Which route did I choose, and what economics did it imply?" | router output used when building strategy actions | Missing — no route result type is drafted yet |
 
 ---
 
 ## Stage 4 — Preview
 
-### Types already drafted
+| Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
+|---|---|---|---|
+| Preview verdict | "If I simulate these exact bytes right now, is the action still acceptable?" | `sdk.previewTransaction(rawTx)` return surface described in the output doc | Missing — needs `TransactionPreview` |
+| Decoded action list | "What will this transaction actually do?" | decoded preview actions | Missing — needs `PreviewAction` |
+| Balance changes | "Which tokens will move, and by how much?" | preview balance deltas | Missing — needs `BalanceChange` |
+| Route and price-impact detail | "Is the route still economically acceptable at current state?" | route detail and price-impact output from Preview | Missing — needs `PreviewRoute` |
+| Exit and settlement flags | "Will this create delayed withdrawals, forced holds, or other non-atomic exit states?" | preview exit / settlement fields | Missing — needs `ExitInfo` |
+| Preview-to-execute handoff | "What exact payload should Execute trust after Preview passes?" | `ExecutionReadyAction` from the output doc | Missing |
 
-No dedicated preview-return type exists yet in `types_.ts`.
-
-### Missing in `types_.ts`
-
-| Missing datatype | Why it matters |
-|---|---|
-| `TransactionPreview` | universal preview result for exact transaction simulation |
-| `PreviewAction` | human-readable decoded action list |
-| `BalanceChange` | net token movements |
-| `PreviewRoute` | route details and price impact |
-| `ExitInfo` | delayed-withdrawal / zero-slippage exit flags |
-| execution-ready type | Preview passes a go / no-go result into Execute |
-
-### Note
-
-Preview is one of the clearest gaps between the current output design and the current backend type draft.
+Preview is the clearest mismatch today: the runtime docs make it central, but `types_.ts` does not draft any preview-return type yet.
 
 ---
 
 ## Stage 5 — Execute
 
-### Types already drafted
-
-No dedicated execution type is present in `types_.ts`.
-
-### Missing in `types_.ts`
-
-| Missing datatype | Why it matters |
-|---|---|
-| execution mode enum | current docs distinguish `human_in_the_loop` and `bot_execution` |
-| verifier payload type | human review flow depends on a shareable preview payload |
-| bot permission state type | bot execution depends on bounded per-account permissions |
+| Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
+|---|---|---|---|
+| Execution mode | "Am I asking a human to approve this, or can an automated bot execute it?" | human-in-the-loop vs bot execution path | Missing — needs execution mode enum |
+| Reviewer payload | "What exactly does the human reviewer need to see before signing?" | reviewable preview payload / verifier payload | Missing |
+| Bot permissions and guardrails | "What is this bot allowed to do on this account, and within what bounds?" | bot permission state, allowed action scopes, thresholds | Missing |
 
 ---
 
 ## Stage 6 — Monitor
 
-### Pool-position monitoring
-
-| Type | Used for in the stage |
-|---|---|
-| `UserPoolPosition` | canonical pool-position envelope |
-| `YieldBreakdown<ClaimableIncentive>` | active yield + claimables |
-| `PnlBreakdown` | interest, rewards, points, total P&L |
-
-### Strategy-position monitoring
-
-| Type | Used for in the stage |
-|---|---|
-| `UserStrategyPosition` | canonical strategy-position envelope |
-| `UserCollateral` | per-collateral balances, quotas, claimable yield |
-| `YieldBreakdown<ClaimableIncentive>` | claimable incentives |
-| `PnlBreakdown` | monetary P&L |
-
-### Missing in `types_.ts`
-
-| Missing datatype | Why it matters |
-|---|---|
-| monitor alert type | the stage is driven by triggers and alerts |
-| Health Factor attribution type | the stage needs structured explanation for HF changes |
-| delayed-withdrawal state | pending withdrawals, claimable withdrawals, and phantom-token positions are not yet represented |
-| oracle freshness / reserve-price state | monitor uses these continuously |
-| emergency-state bundle | paused status, forbidden tokens, loss policy, emergency liquidator |
-| bot-state / permission snapshot | monitor needs to know which bots can act on a position |
+| Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
+|---|---|---|---|
+| Pool position performance | "How is my pool position performing right now?" | `UserPoolPosition.depositSize`, `UserPoolPosition.depositSizeUsd`, `UserPoolPosition.yield`, `UserPoolPosition.pnl` | Covered |
+| Strategy position safety and performance | "How is my leveraged position performing, and how close am I to trouble?" | `UserStrategyPosition.leverage`, `UserStrategyPosition.borrowApy`, `UserStrategyPosition.netApy`, `UserStrategyPosition.debt`, `UserStrategyPosition.debtUsd`, `UserStrategyPosition.healthFactor`, `UserStrategyPosition.pnl`, `UserStrategyPosition.collaterals` | Covered |
+| Per-collateral monitor surface | "Which collateral sleeve is changing, yielding, or waiting to settle?" | `UserCollateral.weight`, `UserCollateral.balance`, `UserCollateral.quota`, `UserCollateral.yield`, `UserCollateral.expectedWithdrawalTimestamp` | Partial — useful starting point, but not a full settlement-state model |
+| Alert and explanation layer | "Why did something change, and do I need to act now?" | monitor alerts, trigger reasons, structured explanations | Missing — needs `MonitorAlert` and explanation types |
+| Health Factor attribution | "Why did my Health Factor move?" | HF movement decomposition | Missing — needs `HealthFactorAttribution` |
+| Oracle and emergency state | "Did market structure or protocol state change in a way that makes my position unsafe?" | oracle freshness, reserve-price state, paused / forbidden / emergency signals | Missing |
+| Governance and bot-state monitoring | "Did governance or bot permissions change since the last check?" | governance/event feed, bot permission snapshot | Missing |
 
 ---
 
-## Draft types that are already useful across multiple stages
+## Cross-stage types that are already doing real work
 
-| Type | Cross-stage relevance |
+| Type | Why it matters across stages |
 |---|---|
-| `TokenRef` | discovery, analysis, preview explanation, monitoring |
-| `YieldBreakdown` | discovery, analysis, monitoring |
-| `LeveragedYieldBreakdown` | discovery and analysis for strategies |
-| `PnlBreakdown` | monitoring, potentially analysis backfill |
-| `ClaimableIncentive` | monitoring and user-position reporting |
+| `TokenRef` | Provides the shared token identity layer across discovery, analysis, and monitoring. |
+| `YieldBreakdown` | Gives one common structure for opportunity yield, collateral yield, and position yield. |
+| `LeveragedYieldBreakdown` | Gives a canonical headline-economics shape for leveraged strategies. |
+| `PoolCollateral` / `StrategyCollateral` | Reuse a common collateral surface across discovery and analysis. |
+| `UserCollateral` | Already hints at settlement tracking through `expectedWithdrawalTimestamp`, even though the full state is still missing. |
+| `PnlBreakdown` | Gives a reusable monetary performance format for monitoring. |
 
 ---
 
 ## Missing-type inventory to consider next
 
-This is the shortest practical list of missing datatypes implied by the current output design.
-
-### High priority
+### Highest priority
 
 - `CuratorProfile`
+- discover-query input type
 - `HistoricalMetricPoint` / `MetricSeries<T>`
 - `GovernanceChange`
 - `EventFeedItem`
 - `RawTx`
+- `ProposedAction`
 - `TransactionPreview`
 - `PreviewAction`
 - `BalanceChange`
@@ -222,30 +167,31 @@ This is the shortest practical list of missing datatypes implied by the current 
 - `ExecutionReadyAction`
 - `MonitorAlert`
 
-### Medium priority
+### Next layer
 
 - `RwaAssetProfile`
 - `RwaComplianceProfile`
+- oracle / pricing metadata types
+- insurance snapshot type
 - `HealthFactorAttribution`
 - `DelayedWithdrawalState`
 - `ClaimableWithdrawal`
-- `PhantomPosition`
 - `BotPermissionState`
 
 ---
 
 ## Bottom line
 
-`types_.ts` already gives a strong starting point for:
+`types_.ts` is already good enough to anchor:
 
 - unified opportunity discovery,
-- strategy and pool yield representation,
-- collateral representation,
-- user-position and P&L monitoring.
+- first-pass pool and strategy economics,
+- collateral surfaces,
+- user-position monitoring.
 
-The largest remaining gaps are in:
+The main missing layer is not basic opportunity data. It is the control layer around that data:
 
-- curator and governance data,
-- preview / execution datatypes,
+- curator and governance context,
+- preview and execution contracts,
 - alerting and explanation datatypes,
-- RWA-specific compliance and redemption datatypes.
+- RWA-specific compliance and settlement datatypes.

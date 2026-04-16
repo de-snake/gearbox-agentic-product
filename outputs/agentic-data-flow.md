@@ -71,15 +71,11 @@ This document covers the **API data requirements** needed to support that loop. 
 
 Curator data is shared across pools and CMs. A standalone endpoint avoids duplication and lets the agent build a trust model once.
 
-| Field | Agent decision story | Data type | Status |
-|-------|---------------------|-----------|--------|
-| address | Identification | snapshot | ? |
-| name | Human-readable identity | snapshot | ? |
-| url | Reference / website | snapshot | ? |
-| socials | Social presence for trust assessment | snapshot | ? |
-| bad_debt_history | "Has this curator's pools ever taken losses?" — cumulative bad debt across all managed pools. Zero = clean track record. Non-zero = the agent investigates which pool and when. | snapshot | ? |
-| pools_managed | "How experienced is this curator?" — more pools = more track record. | snapshot | ? |
-| strategies_managed | Same signal — breadth of management experience. | snapshot | ? |
+| Human-readable data name | Agent story | Tech name references | Data type | Status |
+|-------|---------------------|----------------------|-----------|--------|
+| Curator identity | "Who manages this opportunity, and how do I look them up?" | `address`, `name`, `url`, `socials` | snapshot | ? |
+| Curator loss track record | "Has this curator's pools ever taken losses?" — cumulative bad debt across all managed pools. Zero means a clean track record. Non-zero means the agent investigates which pool and when. | `bad_debt_history` | snapshot | ? |
+| Curator operating breadth | "How much Gearbox operating history does this curator have?" | `pools_managed`, `strategies_managed` | snapshot | ? |
 
 ---
 
@@ -149,54 +145,40 @@ The latest developer docs imply a discover query surface such as:
 
 The response surface is unified even when the agent later chooses to focus only on pools or only on strategies.
 
-### Base `Opportunity` fields
+The tables below use human-readable data-group names in the first column. Exact technical references are grouped separately so the product doc stays readable while still mapping cleanly to `types_.ts`.
 
-| Datatype field | Agent decision story | Data type | Status |
-|-------|---------------------|-----------|--------|
-| `id` | Stable identifier for later lookups and ranking. | snapshot | ? |
-| `chainId` | Multi-chain routing and comparison context. | snapshot | ? |
-| `type` | Distinguishes pool vs strategy at the opportunity layer. | snapshot | ? |
-| `title` | Human-readable label for UI and agent narration. | snapshot | ? |
-| `curatorId` | Trust anchor for later curator research. | snapshot | ? |
-| `underlyingToken: TokenRef` | Base token context for asset matching and sizing. | snapshot | ? |
-| `access.permissionless` | Fast filter for whether the agent can act without extra onboarding. | snapshot | ? |
-| `access.kycRequired` | Fast filter for whether compliance gating applies. | snapshot | ? |
-| `access.kycUrl` | Where the user is routed if KYC is required. | snapshot | ? |
-| `risk.summary` | Optional headline risk text for routing and first-pass prioritization. | snapshot | ? |
-| `risk.warnings` | Non-blocking warnings surfaced already at discovery time. | snapshot | ? |
+### Base `Opportunity` data groups
 
-### `PoolOpportunity` extension fields
+| Human-readable data name | Agent story | Tech name references | Data type | Status |
+|-------|---------------------|----------------------|-----------|--------|
+| Opportunity identity | "What is this opportunity, and how do I refer to it later?" | `id`, `type`, `title` | snapshot | ? |
+| Routing context | "Which chain and base asset is this on?" | `chainId`, `underlyingToken: TokenRef` | snapshot | ? |
+| Curator reference | "Whose opportunity is this?" | `curatorId` | snapshot | ? |
+| Access parameters | "Do I need to do anything before I can use this opportunity?" | `access.permissionless`, `access.kycRequired`, `access.kycUrl` | snapshot | ? |
+| Discovery risk hints | "Is there anything I should notice before I analyze this?" | `risk.summary`, `risk.warnings` | snapshot | ? |
 
-| Datatype field | Agent decision story | Data type | Status |
-|-------|---------------------|-----------|--------|
-| `poolAddress` | Concrete pool identifier for later detail reads and execution. | snapshot | ? |
-| `yield: YieldBreakdown` | Headline pool yield with incentive structure. | snapshot (computed) | ? |
-| `supplied` | Total supplied amount for pool context. | snapshot | ? |
-| `borrowed` | Total borrowed amount for liquidity context. | snapshot | ? |
-| `utilization` | First-pass exit-liquidity signal. | snapshot | ? |
-| `tvl` | Raw pool size in underlying units. | snapshot | ? |
-| `tvlUsd` | Normalized size metric for ranking across chains and assets. | snapshot | ? |
-| `availableLiquidity` | Immediate withdrawal capacity. | snapshot | ? |
-| `collaterals: PoolCollateral[]` | First-pass exposure surface for the pool. | snapshot | ? |
+### `PoolOpportunity` extension data groups
 
-### `StrategyOpportunity` extension fields
+| Human-readable data name | Agent story | Tech name references | Data type | Status |
+|-------|---------------------|----------------------|-----------|--------|
+| Pool identifier | "Which pool is this exactly?" | `poolAddress` | snapshot | ? |
+| Pool headline yield | "What does this pool currently pay?" | `yield: YieldBreakdown` | snapshot (computed) | ? |
+| Pool size and liquidity snapshot | "How large is the pool, and how much liquidity is immediately available?" | `supplied`, `borrowed`, `utilization`, `tvl`, `tvlUsd`, `availableLiquidity` | snapshot | ? |
+| Pool collateral surface | "What first-pass collateral exposure am I inheriting by lending here?" | `collaterals: PoolCollateral[]` | snapshot | ? |
 
-| Datatype field | Agent decision story | Data type | Status |
-|-------|---------------------|-----------|--------|
-| `minDebt` | Lower sizing bound for entry. | snapshot | ? |
-| `maxDebt` | Upper sizing bound for entry. | snapshot | ? |
-| `borrowableLiquidity` | Capacity available for opening or increasing a position. | snapshot | ? |
-| `maxLeverage` | First-pass leverage ceiling. | snapshot | ? |
-| `borrowApy` | Cost side of the strategy at discovery time. | snapshot | ? |
-| `maxLeverageYield: LeveragedYieldBreakdown` | Headline strategy economics at maximum leverage. | snapshot (computed) | ? |
-| `bestBaseYield: YieldBreakdown` | Best unlevered yield path visible at discovery time. | snapshot (computed) | ? |
-| `collaterals: StrategyCollateral[]` | First-pass collateral and quota surface. | snapshot | ? |
-| `isPaused` | Operational availability flag. | snapshot | ? |
-| `hasDelayedWithdrawal` | Signals non-atomic settlement characteristics up front. | snapshot | ? |
+### `StrategyOpportunity` extension data groups
+
+| Human-readable data name | Agent story | Tech name references | Data type | Status |
+|-------|---------------------|----------------------|-----------|--------|
+| Strategy sizing bounds | "Can I enter at the size I want?" | `minDebt`, `maxDebt` | snapshot | ? |
+| Strategy capacity and leverage | "How much room is left, and how much leverage is available?" | `borrowableLiquidity`, `maxLeverage`, `borrowApy` | snapshot | ? |
+| Strategy headline economics | "What is the best visible leveraged outcome here?" | `maxLeverageYield: LeveragedYieldBreakdown`, `bestBaseYield: YieldBreakdown` | snapshot (computed) | ? |
+| Strategy collateral surface | "Which collateral paths and quota constraints exist?" | `collaterals: StrategyCollateral[]` | snapshot | ? |
+| Strategy operating flags | "Is the strategy currently usable, and does it involve non-atomic settlement?" | `isPaused`, `hasDelayedWithdrawal` | snapshot | ? |
 
 ### Handoff: Discover → Analyze (`Opportunity[]`)
 
-The agent takes the returned `Opportunity[]` feed, applies filters and ranking, and carries a narrowed subset into Analyze. The narrowing logic is agent-side, but the backend types for the discover surface are `Opportunity`, `PoolOpportunity`, and `StrategyOpportunity`.
+The agent takes the returned `Opportunity[]` feed, applies filters and ranking, and carries a narrowed subset into Analyze. The narrowing logic is agent-side, but the backend types for the discover surface are `Opportunity`, `PoolOpportunity`, and `StrategyOpportunity`. Exact field-level mappings now live in `../synthesis/backend-datatype-stage-mapping.md`.
 
 ---
 
