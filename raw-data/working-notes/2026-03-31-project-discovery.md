@@ -12,7 +12,7 @@
 - CEO Plan: Credit Account as Agent OS (2026-03-26)
 - Phase 1 agent demo: 11/11 lifecycle tests passing, three-tier error model implemented
 - Product interview with Ilya (2026-03-31)
-- Due diligence research: 12 questions, 35 sources (2026-03-31) — see 2026-03-31-defi-due-diligence-research.md
+- Due diligence research: 12 questions, 35 sources (2026-03-31) — see ../specific-research/2026-03-31-defi-due-diligence-research.md
 
 ---
 
@@ -354,7 +354,7 @@ Completed in the internal flow-mapping document (not included in this share repo
 
 ### Phase 3: Information Architecture [DONE]
 
-Completed in the internal information-architecture document (not included in this share repo). 7 entities defined with loss-vector-grounded properties, relationship map, and consumer matrix. Backend handoff spec in ../specs/backend-data-requirements.md.
+Completed in the internal information-architecture document (not included in this share repo). 7 entities defined with loss-vector-grounded properties, relationship map, and consumer matrix. Backend handoff spec in ../../agentic-data-flow.md.
 
 ### Phase 4: Handoff to Shaping [DONE]
 

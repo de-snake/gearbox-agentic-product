@@ -1,20 +1,25 @@
 # Status
 
-Created: 2026-04-16
+Updated: 2026-04-16
 
-## What this repo is
+## Current state
 
-A clean shareable repo assembled from `projects/gearbox/agent-sdk-api`.
+This share repo is now organized around a single final deliverable: `agentic-data-flow.md`.
 
-## Scope
+## Changes in this revision
 
-- Kept the main backend read spec as the primary entry point.
-- Renamed research files to human-readable names.
-- Pulled in only the supporting docs needed to understand or review the spec.
-- Excluded internal planning artifacts to keep the package concise.
+- Merged the original backend data requirements and the RWA / KYC extension into one final document.
+- Removed the separate write-operations share artifact for now.
+- Replaced `research/` with `raw-data/`.
+- Split `raw-data/` into:
+  - `call-transcripts/`
+  - `specific-research/`
+  - `working-notes/`
+- Rewrote the root README to explain navigation and the information flow that produced the final output.
 
-## Ready for
+## Review path
 
-- Local git sharing
-- GitHub/GitLab push
-- Sending to colleagues as a focused docs repo
+1. Read `agentic-data-flow.md`.
+2. Read `README.md` for construction logic and repo navigation.
+3. Use `raw-data/` to trace where the final document came from.
+4. Use `architecture/` when reviewing how stage-to-stage compression is intended to work.

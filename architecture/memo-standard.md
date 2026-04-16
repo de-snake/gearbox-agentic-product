@@ -325,7 +325,7 @@ A conforming memo MUST pass these checks:
 
 ## Reference implementation sketch
 
-Our implementation compresses raw data from `data-read-spec` fields into memo fields. Key computations:
+Our implementation compresses raw data from `agentic-data-flow` fields into memo fields. Key computations:
 
 ### Trend computation
 ```
@@ -369,11 +369,11 @@ Reference implementation flags: stale_episodes > 3 or max_spread > 2%.
 
 ---
 
-## How this maps to data-read-spec
+## How this maps to agentic-data-flow
 
-Every memo field traces to one or more data-read-spec fields. The memo is a COMPRESSION of those fields, not new data.
+Every memo field traces to one or more agentic-data-flow fields. The memo is a COMPRESSION of those fields, not new data.
 
-| Memo field | data-read-spec source |
+| Memo field | agentic-data-flow source |
 |---|---|
 | apy_organic, apy_incentive_merkl | §2a Q1 (LP) or §2b Q1 (CA): supply rate, incentive yield |
 | apy_organic_90d.* | §2a Q1: Total APY history (90d daily) |

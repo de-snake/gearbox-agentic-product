@@ -1,7 +1,7 @@
 # Apr 3 Call — Analysis & Action Items
 
-**Source:** 2026-04-03-product-call-transcript.md (transcript), 2026-04-03-team-updated-spec.md (their updated spec)
-**Compared against:** ../specs/backend-data-requirements.md (our spec)
+**Source:** ../call-transcripts/2026-04-03-product-call-transcript.md (transcript), 2026-04-03-team-updated-spec.md (their updated spec)
+**Compared against:** ../../agentic-data-flow.md (our spec)
 
 ---
 
@@ -148,7 +148,7 @@ These are strengths to preserve — don't lose them in any merge.
 
 ## 5. Proposed next steps
 
-1. Apply items 1–9 to ../specs/backend-data-requirements.md (I can do this now)
+1. Apply items 1–9 to ../../agentic-data-flow.md (I can do this now)
 2. Discuss item 10 (Propose/Preview) with you — this is a structural question: does our spec stay as "data requirements only" or expand to cover execution-stage data needs?
 3. Send updated spec to Gregory's team for A/B/C review
 4. Use their doc (2026-04-03-team-updated-spec.md) as the reference for MCP tool signatures — it's the tool-shape companion to our data-shape spec

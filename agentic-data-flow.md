@@ -1,18 +1,23 @@
-# Backend Data Requirements — api.gearbox.finance
+# Agentic Data Flow — api.gearbox.finance
 
-**Date:** 2026-04-07 (updated from 2026-04-02)
-**From:** Product (Ilya S)
-**To:** Backend Engineering
-**Spec version:** 2 (adds staged handoff contracts, preview stage, Apr 3 call findings)
+**Date:** 2026-04-16  
+**From:** Product (Ilya S)  
+**To:** Backend Engineering  
+**Document type:** Final merged backend handoff  
+**Merged sources:** Original backend data requirements + RWA / KYC extension  
 **Action needed:** For each data group, confirm: (A) already available, (B) can add, (C) hard/expensive
 
 ---
 
 ## What this document is
 
-This is a product-driven specification of what data the API needs to serve to third-party agents (via MCP/SDK). Every data requirement traces back to a specific question that an agent asks at a specific step in the lifecycle.
+This is the final merged product-driven specification of what `api.gearbox.finance` needs to serve to third-party agents through MCP and SDK interfaces.
 
-The document is structured as: **agent step → question → data needed**. If someone asks "why do we need field X?", the answer is always: "because at step Y, the agent asks Z, and can't answer it without X."
+It combines the original backend data requirements document with the RWA / KYC extension into one continuous **agentic data flow**. Every data requirement traces back to a specific question that an agent asks at a specific step in the lifecycle.
+
+The document is structured as: **agent step → user question → data needed**. If someone asks "why do we need field X?", the answer is always: "because at step Y, the agent asks Z, and cannot answer it without X."
+
+The governing principle is financial relevance. This is not a generic field dump. A field belongs here only if it helps the agent answer a decision-relevant question or avoid a specific loss vector at a specific stage.
 
 Each field is marked as one of:
 
@@ -30,7 +35,7 @@ Some fields appear in both snapshot and history — the agent needs the current 
 Agent ──→ api.gearbox.finance (SDK) ──→ on-chain + backend
 ```
 
-**Agent pipeline** (investment firm analogy — see ../architecture/staged-agent-architecture.md for full design):
+**Agent pipeline** (investment firm analogy — see architecture/staged-agent-architecture.md for full design):
 
 ```text
 Scout ──shortlist──→ Analyst ──memos──→ Committee ──allocation──→ Exec Desk ──receipts──→ Ops
@@ -40,7 +45,7 @@ Scout ──shortlist──→ Analyst ──memos──→ Committee ──allo
 
 Six information stages: **Discover → Evaluate → Propose → Preview → Execute → Monitor**.
 
-Each stage acts as a compression layer. The scout doesn't dump 50 pool records on the analyst — it passes a ranked shortlist of 3–5 with a sentence each on why. The analyst doesn't dump 90-day price history on the committee — it passes computed facts with evidence (see ../architecture/memo-standard.md).
+Each stage acts as a compression layer. The scout doesn't dump 50 pool records on the analyst — it passes a ranked shortlist of 3–5 with a sentence each on why. The analyst doesn't dump 90-day price history on the committee — it passes computed facts with evidence (see architecture/memo-standard.md).
 
 This document covers the **API data requirements** for each stage. The handoff contracts (what each stage receives and passes forward) are included to show WHY each field matters at a system level.
 
@@ -67,7 +72,7 @@ Curator data is shared across pools and CMs. A standalone endpoint avoids duplic
 
 ## Stage 0: Intent
 
-The agent already knows whether it's an LP (passive yield on a single token) or a CA agent (leveraged strategy on collateral). This decision happens before discovery — the two paths look at different data and filter differently.
+The agent already knows whether it is an LP (passive yield on a single token) or a CA agent (leveraged strategy on collateral). This decision happens before discovery — the two paths look at different data and filter differently.
 
 ### Input: AgentTask
 
@@ -114,12 +119,33 @@ The agent arrives with a category (USD = stablecoin strategies, ETH = ETH-correl
 | Collateral type (target asset) | "Can I hold the asset I want?" — primary filter. One strategy = one target. Skip if no match. | snapshot | ? |
 | Borrowable liquidity | "Is there room for my position?" — zero = skip | snapshot | ? |
 | Min/max debt | "Does my position size fit?" — skip if outside range | snapshot | ? |
-| Net APY estimate | "Is this roughly profitable?" — coarse filter: strategy yield x leverage - borrow cost | snapshot (computed) | ? |
+| Net APY estimate | "Is this directionally profitable?" — coarse filter: strategy yield x leverage - borrow cost | snapshot (computed) | ? |
 | Facade paused | "Can I actually open a position?" — if paused, skip entirely. No point doing DD. | snapshot | ? |
 | Strategy key | Unique identifier: `[chain_id, cm_address, collateral_address]`. The agent uses this to reference a specific strategy across all subsequent stages. | snapshot | ? |
 | Availability | `"Permissionless"` or `"KYC'd"` — if KYC'd and the agent can't meet the requirement, skip. | snapshot | ? |
 | Points programs | `Array<{ program_name, multiplier }>` — informational only. Points have no guaranteed economic value; the agent notes them but does not factor them into yield calculations. | snapshot | ? |
 | Chain ID | Which chain this strategy is on — multi-chain context for cross-chain comparison. | snapshot | ? |
+
+### Cross-cutting discovery filter: KYC gating
+
+Both LP and CA agents hit the same gating question before any due diligence happens. This is a hard binary filter — if the agent cannot pass KYC, everything downstream is irrelevant.
+
+#### LP discovery extension
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| KYC required | "Do I need to be KYC'd to deposit?" — if the pool's underlying token is a KYC-wrapped asset (DefaultKYCUnderlying or OnDemandKYCUnderlying), the agent must be whitelisted in Securitize's registry to hold dTokens. If not KYC'd, skip. | snapshot | ? |
+| KYC provider | "Who runs the KYC?" — identifies the compliance gatekeeper (e.g., Securitize). The agent checks if it has a relationship with this provider. Different providers = different onboarding flows. | snapshot | ? |
+
+#### CA discovery extension
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| KYC required | "Do I need KYC to open a Credit Account?" — if the CM uses a SecuritizeKYCFactory, the agent must be registered in Securitize's investor registry. Standard CMs use the regular DegenNFT gate. If KYC is required and the agent isn't registered, skip entirely. | snapshot | ? |
+| KYC provider | Same as LP — identifies the compliance gatekeeper. | snapshot | ? |
+| Factory address | "Where do I go to open an account?" — KYC-gated CMs route through a specific factory contract, not the standard CreditFacade. The agent needs to know the entry point. | snapshot | ? |
+
+---
 
 **Why APY is computed differently:** LP APY = pool supply rate + incentives. CA APY = (strategy base yield x leverage) - borrow cost - fees. These are fundamentally different calculations.
 
@@ -192,6 +218,36 @@ Each CM is a separate risk envelope with its own collateral rules. A pool may ha
 | Debt limit | "How much MORE debt could accumulate through this CM?" — high remaining capacity = exposure can grow. | snapshot | ? |
 | Is paused (facade) | "Is this CM operational?" — paused CM can't take new positions (exposure shrinks), but existing underwater positions can't be liquidated either. This creates a second-level risk: bad debt can accumulate in paused CMs because the normal liquidation mechanism is disabled. The agent checks: is the CM paused AND does it have significant borrowed amount? | snapshot | ? |
 
+
+### Q2-LP extension: "What RWA-specific risks am I exposed to?"
+
+The LP's existing exposure chain analysis (pool → CMs → tokens) covers generic collateral risk. But RWA collateral introduces three new loss vectors that don't exist with standard DeFi tokens:
+
+1. **Frozen account bad debt** — Securitize can freeze individual Credit Accounts. A frozen account can't be liquidated even when HF < 1. Bad debt accumulates silently and eventually socializes to the pool.
+2. **Liquidator scarcity** — only Securitize-whitelisted liquidators can receive RWA tokens. Smaller liquidator pool = slower liquidation = more bad debt.
+3. **Off-chain asset risk** — the RWA token's value depends on an off-chain asset managed by a third party. The on-chain system can't mitigate off-chain credit events.
+
+#### Per CM (nested under pool, extends Q2-LP per-CM table)
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| Has RWA collateral | "Does this CM allow tokenized securities?" — binary flag. If yes, the LP needs to assess the three RWA-specific loss vectors below. If no, standard DD is sufficient. | snapshot | ? |
+| Frozen accounts count | "How many accounts in this CM are currently frozen?" — frozen accounts can't be liquidated. Each one is a potential bad debt source. Zero = no freeze risk right now. Non-zero = the LP checks: what's the total debt in frozen accounts vs the pool's insurance fund? | snapshot | ? |
+| Frozen accounts total debt | "How much debt is locked in frozen positions?" — the actual exposure. If this exceeds the insurance fund, the LP bears the excess as potential socialized loss. | snapshot | ? |
+| Whitelisted liquidator count | "How many liquidators can actually liquidate RWA positions?" — proxy for liquidation speed. Standard DeFi tokens: anyone can liquidate. RWA tokens: only whitelisted addresses. If the count is low (e.g., < 5), liquidation may be slow, increasing bad debt risk. | snapshot | ? |
+| Transfer restriction type | "What compliance standard governs the RWA tokens in this CM?" — e.g., DS Token Protocol (Securitize), ERC-3643, or custom. Tells the LP which compliance framework applies and how restrictive transfers are. | snapshot | ? |
+
+#### Off-chain asset properties (per RWA token, extends Q2-LP pool-level)
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| Underlying off-chain asset type | "What real-world asset backs this token?" — e.g., US Treasury bills, corporate credit, real estate. Determines the credit risk model: Treasuries ≈ sovereign risk, corporate credit = default risk, real estate = valuation risk. | snapshot | ? |
+| Issuer / fund manager | "Who manages the off-chain asset?" — counterparty risk. The agent may check the issuer against known entities or credit ratings. | snapshot | ? |
+| Redemption mechanism | "How does the token convert back to cash?" — on-demand redemption, periodic windows (e.g., monthly), or secondary market only. Affects the LP's indirect exit risk: if borrowers can't redeem RWA quickly, liquidation proceeds may be delayed. | snapshot | ? |
+| Redemption delay | "How long does it take to get cash out?" — in hours or days. Longer delay = more price risk during liquidation. | snapshot | ? |
+| NAV update frequency | "How often is the off-chain asset revalued?" — daily, weekly, monthly. Infrequent NAV updates mean the oracle price may be stale relative to the real asset value. | snapshot | ? |
+
+---
 
 ### Q3-LP: "Can I withdraw when I need to?"
 
@@ -298,6 +354,36 @@ The agent is deciding whether to hold a specific asset inside a leveraged positi
 | Borrowable liquidity (remaining in CM) | "Can I adjust leverage later?" — if borrowable is near zero, the agent can't increase leverage or refinance. It must decide now if the current leverage is sufficient. | snapshot | ? |
 | Min/max debt | "Can I iteratively unwind?" — if the agent partially exits and remaining debt approaches minDebt, it can't repay any more incrementally. It must either close the entire remaining position in one transaction or leave it. The agent plans its exit strategy around these boundaries. | snapshot | ? |
 
+### Q2-CA extension: "What RWA-specific risks does my collateral have?"
+
+The existing Q2-CA covers generic collateral safety (LT, oracle, exit feasibility). RWA collateral adds compliance-layer risks that can immobilize or devalue the position independent of market conditions.
+
+#### Compliance risk (per RWA token in the CM)
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| Transfer restriction type | "Who controls whether I can move this token?" — DS Token Protocol means Securitize's registry is the gatekeeper. Every transfer (deposit, withdrawal, liquidation) must pass the whitelist check. The agent understands: this isn't just price risk — there's a compliance layer that can block transactions. | snapshot | ? |
+| Freeze capability | "Can someone freeze my specific account?" — if the CM uses SecuritizeKYCFactory, the Securitize admin can call setFrozenStatus() on the agent's Credit Account. When frozen: no deposits, no withdrawals, no borrowing, no repaying, no liquidation. Total immobilization. The agent factors this into its risk model: there exists an external actor who can lock the position regardless of HF. | snapshot | ? |
+| Freeze authority | "Who has the power to freeze me?" — the specific admin address or entity. The agent may assess: is this a multisig? A single EOA? A regulated entity with legal obligations? | snapshot | ? |
+| Investor reassignment risk | "Can someone transfer ownership of my position?" — Securitize admin can call setInvestor() to reassign the Credit Account to a different investor. The agent understands this is for estate settlement / lost keys, but it means an external party can change position ownership. | snapshot | ? |
+
+#### Exit constraints (extends Q2-CA exit feasibility)
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| Whitelisted liquidator count | "If I get liquidated, who can actually execute it?" — same field as LP DD but from the CA perspective. Few liquidators = the agent may sit in a liquidatable state longer, accumulating more bad debt (worse remaining funds after liquidation). | snapshot | ? |
+| Redemption windows | "When can I actually redeem the underlying asset for cash?" — some RWA tokens only allow redemption during specific windows (e.g., month-end). Outside the window, the only exit is secondary market (if any). The agent plans position exits around these windows. | snapshot | ? |
+| Secondary market liquidity | "Can I sell this token without redemption?" — some RWA tokens trade on DEXes or OTC. If secondary market exists, exit is possible anytime (with price impact). If no secondary market, the agent is locked to redemption windows. | snapshot | ? |
+
+### Q3-CA extension: "What are the operational constraints of a KYC-gated CM?"
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| Operation routing | "How do I interact with this CM?" — KYC-gated CMs route all operations through the SecuritizeKYCFactory → SecuritizeWallet → CreditFacade chain. The agent can't call CreditFacade directly. This affects how the agent constructs transactions. | snapshot | ? |
+| Bot permissions blocked | "Can I use automated bots?" — SecuritizeWallet explicitly blocks bot permissions. No third-party automation without going through the factory. The agent knows: position management must go through the KYC factory, not via bot adapters. | snapshot | ? |
+
+---
+
 ### Q3-CA: "Who manages this strategy, and what are the hard constraints?"
 
 | Field | Agent decision story | Data type | Status |
@@ -316,7 +402,7 @@ The agent is deciding whether to hold a specific asset inside a leveraged positi
 
 ### Handoff: Evaluate → Propose (Research Memo)
 
-The analyst produces a structured Research Memo per candidate — the critical compression layer. Full standard defined in ../architecture/memo-standard.md. Key principle: evidence-backed compression, never interpretive labels.
+The analyst produces a structured Research Memo per candidate — the critical compression layer. Full standard defined in architecture/memo-standard.md. Key principle: evidence-backed compression, never interpretive labels.
 
 ```typescript
 interface ResearchMemo {
@@ -473,6 +559,16 @@ Not only curator parameter changes matter — organic borrower behavior can shif
 
 ---
 
+### Freeze and compliance monitoring
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| Frozen accounts delta | "Are more accounts getting frozen?" — if the count is increasing, the LP's bad debt exposure is growing. Trend matters more than the absolute number. | snapshot (delta from prior check) | ? |
+| Frozen debt delta | "Is frozen debt growing?" — same logic. If frozen debt is approaching the insurance fund, the LP should consider exiting. | snapshot (delta from prior check) | ? |
+| Whitelist changes (liquidators added/removed) | "Is the liquidator pool growing or shrinking?" — fewer liquidators = slower liquidation = more risk. | event log | ? |
+
+---
+
 ## Stage 5b: Monitor — CA
 
 **What happens:** CA agent periodically checks position health. The core metric is health factor (HF), but the agent also needs to understand WHY HF changed to decide whether to act (deleverage, exit) or wait (temporary volatility). The backend provides raw facts — the agent does the reasoning.
@@ -546,6 +642,23 @@ Grouped fields the agent checks as a unit to assess whether the CM is in an abno
 | Field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
 | Active bots + permissions | "Who else can modify my position?" — the agent checks if any bots have been granted or revoked permissions. A partial liquidation bot with permissions is expected. An unknown bot with EXTERNAL_CALLS_PERMISSION is a concern. | snapshot | ? |
+
+---
+
+### Own account compliance state
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| Own frozen status | "Am I frozen?" — THE critical check. If frozen, the agent can do nothing — no exit, no rebalance, no repay. It must wait for the freeze to be lifted. The agent checks this every monitoring cycle. | snapshot | ? |
+| Investor registry status | "Am I still registered as the beneficial owner?" — if the agent's investor record was changed (via setInvestor), its operations will fail. This is an integrity check. | snapshot | ? |
+| KYC validity | "Is my KYC still valid?" — Securitize KYC may expire or be revoked. If the agent's whitelist status is revoked, it can't receive RWA tokens back during withdrawal or closing. The agent checks proactively. | snapshot | ? |
+
+### Upcoming redemption events
+
+| Field | Agent decision story | Data type | Status |
+|-------|---------------------|-----------|--------|
+| Next redemption window | "When is the next opportunity to redeem?" — for RWA tokens with periodic redemption. The agent plans exits around this. If HF is declining and the next window is far away, the agent may need to find secondary market exit instead. | snapshot | ? |
+| Redemption notice deadline | "When do I need to submit a redemption request?" — some RWA tokens require advance notice (e.g., 5 days before the window). The agent must act before this deadline or wait for the next window. | snapshot | ? |
 
 ---
 
@@ -644,6 +757,23 @@ These are on-chain events needed for the parameter change log and Stage 5 monito
 
 ---
 
+## Appendix D: RWA / KYC-specific Loss Vector Summary
+
+These are the loss vectors specific to RWA/KYC that don't exist with standard DeFi tokens. Each field in this document traces to one or more of these.
+
+| # | Loss vector | Affects | Severity | Fields that address it |
+|---|------------|---------|----------|----------------------|
+| R1 | Frozen account bad debt — frozen CA can't be liquidated, debt accumulates | LP | High | Frozen accounts count/debt, own frozen status |
+| R2 | Liquidator scarcity — restricted liquidator pool slows liquidation | LP, CA | Medium | Whitelisted liquidator count |
+| R3 | Off-chain asset default — underlying RWA loses value due to off-chain event | LP, CA | High | Off-chain asset type, issuer, NAV frequency |
+| R4 | Redemption lockout — can't convert RWA to cash outside windows | CA | Medium | Redemption windows, notice deadline, mechanism |
+| R5 | Compliance-layer immobilization — freeze/revocation blocks all operations | CA | High | Freeze capability, own frozen status, KYC validity |
+| R6 | Investor reassignment — external party changes position ownership | CA | Low | Investor reassignment risk |
+| R7 | Operational restriction — can't use bots or direct facade calls | CA | Low | Operation routing, bot permissions blocked |
+| R8 | KYC expiry — whitelist revocation blocks token transfers | CA | Medium | KYC validity, investor registry status |
+
+---
+
 ## Summary
 
 | Category | Count |
@@ -657,6 +787,7 @@ These are on-chain events needed for the parameter change log and Stage 5 monito
 | CA preview fields (Stage 4) | 9 (new) |
 | LP monitoring fields (Stage 5a) | ~13 (+1: pending governance) |
 | CA monitoring fields (Stage 5b) | ~22 (+5: pending gov, emergency state bundle) |
+| RWA / KYC-specific extension fields | 32 |
 | Historical series | 7 |
 | Event types to index | 34 |
 | Computed aggregations | 7 |
@@ -667,9 +798,10 @@ These are on-chain events needed for the parameter change log and Stage 5 monito
 - snapshot (computed): ~17 fields — backend computes from on-chain state (preview stage, entry cost, breakeven)
 - history (time series): 7 series — backend stores daily/per-tx snapshots
 - event log (change records): 34 event types — backend indexes on-chain events
+- merged RWA / KYC extension: 32 additional stage-specific fields, primarily snapshot fields with one dedicated event-log stream for whitelist changes
 
-**Handoff contracts defined:** AgentTask → Shortlist → ResearchMemo → AllocationDecision → ExecutionPlan. See ../architecture/staged-agent-architecture.md and ../architecture/memo-standard.md for full definitions.
+**Handoff contracts defined:** AgentTask → Shortlist → ResearchMemo → AllocationDecision → ExecutionPlan. See architecture/staged-agent-architecture.md and architecture/memo-standard.md for full definitions.
 
 **Stage numbering:** Stages 1-2 (Discover, Evaluate) are the original spec. Stage 3 (Propose) and Stage 4 (Preview) are new. Stage 5 (Monitor) was previously Stage 3. Renumbered to match the 6-stage pipeline.
 
-**Next step:** Review each table, mark Status column as A / B / C. The stage structure shows exactly why each field is needed — every field traces to an agent question at a specific step. RWA/KYC-specific fields are in the companion document backend-data-requirements-rwa-kyc-extension.md.
+**Next step:** Review each table and mark the Status column as A / B / C. The stage structure shows exactly why each field is needed — every field traces to an agent question at a specific step. The RWA / KYC-specific fields are integrated directly into the stage sections above and summarized in Appendix D.

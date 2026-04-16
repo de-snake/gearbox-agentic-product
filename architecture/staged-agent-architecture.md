@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-06
 **Status:** Draft for review
-**Input:** ../specs/backend-data-requirements.md, 3AprCall transcript, ../research/2026-04-03-team-updated-spec.md (team's tool spec), analysis session
+**Input:** ../agentic-data-flow.md, 3AprCall transcript, ../raw-data/working-notes/2026-04-03-team-updated-spec.md (team's tool spec), analysis session
 
 ---
 
@@ -10,7 +10,7 @@
 
 The agent lifecycle mirrors the decision-making pipeline in an investment firm. Each stage is a distinct role with a clear mandate, a defined input, and a compressed output that feeds the next stage.
 
-The design problem is NOT "what data exists" (data-read-spec already answers that). The design problem is: **what context does each stage receive, and what does it pass forward?**
+The design problem is NOT "what data exists" (agentic-data-flow already answers that). The design problem is: **what context does each stage receive, and what does it pass forward?**
 
 Each stage acts as a compression layer. The scout doesn't dump 50 pool records on the analyst — it passes a ranked shortlist of 3 with a sentence each on why. The analyst doesn't dump 90-day price history on the committee — it passes "oracle: stable, no episodes" or "oracle: 3 stale events in 90d, needs attention."
 
@@ -53,7 +53,7 @@ interface AgentTask {
 
 Decision from Apr 3 call: asset categories match frontend filters (USD = stablecoin strategies, ETH = ETH-correlated, BTC = BTC-correlated). Agent arrives with a category, not a specific token.
 
-### Data available (from data-read-spec)
+### Data available (from agentic-data-flow)
 - LP: pool_name, underlying_token, apy_total, tvl, tvl_usd, is_paused
 - CA: strategy_name, underlying_token, collateral_token, borrowable_liquidity, min/max_debt, net_apy_estimate, is_paused
 
@@ -89,8 +89,8 @@ Deep due diligence on each shortlisted candidate. Produce a structured Research 
 ### Input
 Shortlist from Scout + access to raw data via detail tools (get_pool_detail, get_strategy_detail, get_curator).
 
-### Data available (from data-read-spec)
-Everything in Stage 2a (LP) and Stage 2b (CA). This is where data-read-spec shines — the per-field "agent decision story" tables are the analyst's research checklist.
+### Data available (from agentic-data-flow)
+Everything in Stage 2a (LP) and Stage 2b (CA). This is where agentic-data-flow shines — the per-field "agent decision story" tables are the analyst's research checklist.
 
 ### New fields to add (from Apr 3 call findings)
 
@@ -188,12 +188,12 @@ Compression: hundreds of data points → one structured memo per candidate. The 
 
 **Critical design question:** Who does the compression — the API or the agent? 
 
-Option A: API returns raw data (current data-read-spec), agent's analyst module compresses into memo.
+Option A: API returns raw data (current agentic-data-flow), agent's analyst module compresses into memo.
 Option B: API returns pre-compressed assessments (e.g., oracle_health: "stable").
 
 Recommendation: Option A. The API serves raw facts. The agent does the reasoning. This is consistent with the user's principle: "agent-facing data must be financially meaningful... raw data + computed projections, never interpretive labels/recommendations. Agent applies own judgment."
 
-The memo format above is the agent's INTERNAL handoff — not an API response shape. The API serves what data-read-spec describes; the analyst agent produces the memo.
+The memo format above is the agent's INTERNAL handoff — not an API response shape. The API serves what agentic-data-flow describes; the analyst agent produces the memo.
 
 ---
 
@@ -245,8 +245,8 @@ Take each allocation decision and test it against real chain state. Produce go/n
 ### Input
 AllocationDecision entries.
 
-### Data needed from API (new — not in data-read-spec)
-These are the fields from the team's tool spec (../research/2026-04-03-team-updated-spec.md) that our spec currently ignores:
+### Data needed from API (new — not in agentic-data-flow)
+These are the fields from the team's tool spec (../raw-data/working-notes/2026-04-03-team-updated-spec.md) that our spec currently ignores:
 
 **LP preview:**
 - expected_shares at deposit amount
@@ -315,7 +315,7 @@ Watch all positions. Detect drift from expectations. Generate alerts that re-ent
 | HF critical | Execute — immediate action |
 | Pending governance change detected | Analyst — assess impact |
 
-Monitor data is well-covered in data-read-spec (Stage 3a/3b). No structural changes needed, but add:
+Monitor data is well-covered in agentic-data-flow (Stage 3a/3b). No structural changes needed, but add:
 
 **New monitor fields (from Apr 3 call):**
 - Pending governance changes (same as Analyze — queued Safe TX)
@@ -325,11 +325,11 @@ Monitor data is well-covered in data-read-spec (Stage 3a/3b). No structural chan
 
 ## Findings from Apr 3 call — complete list
 
-For reference, all findings that should be applied to data-read-spec when we update it:
+For reference, all findings that should be applied to agentic-data-flow when we update it:
 
 ### Must add (S = small, M = medium effort to spec)
 
-| # | Finding | Where in data-read-spec | Size |
+| # | Finding | Where in agentic-data-flow | Size |
 |---|---------|------------------------|------|
 | 1 | `/curators` endpoint fields (address, name, bad_debt, url, socials) | Architecture + new section | S |
 | 2 | `strategy_key: [chain_id, cm_address, collateral_address]` | §1b (CA Discover) | S |
@@ -358,7 +358,7 @@ For reference, all findings that should be applied to data-read-spec when we upd
 
 ---
 
-## How this changes data-read-spec
+## How this changes agentic-data-flow
 
 The current spec is structured as: **stage → question → fields**.
 
@@ -372,13 +372,13 @@ Each stage gets two new sections:
 
 The field tables stay exactly as they are — they describe what raw data the API serves. The input/output contracts describe what the AGENT does with that data at each stage.
 
-This means data-read-spec remains a backend-facing document ("here's what we need you to serve"), but now includes the agent-side context that explains WHY each field matters at a system level, not just at an individual decision level.
+This means agentic-data-flow remains a backend-facing document ("here's what we need you to serve"), but now includes the agent-side context that explains WHY each field matters at a system level, not just at an individual decision level.
 
 ---
 
 ## Decisions (Apr 6 review)
 
-1. **Preview fields go in data-read-spec.** New Stage 4 section. Simulation results, gas estimates, deviation checks, calldata — these are data requirements like any other stage.
+1. **Preview fields go in agentic-data-flow.** New Stage 4 section. Simulation results, gas estimates, deviation checks, calldata — these are data requirements like any other stage.
 
 2. **Memo: lightweight standard + reference implementation.** We define the structure and required fields. We also ship our own implementation that shows how to use it. Third parties can use ours out of the box or build their own. See "Memo standard" section below.
 
@@ -423,7 +423,7 @@ The standard defines: every memo field MUST include the underlying numbers that 
 
 ### Next step
 Separate research task: design the memo standard. Inputs:
-- data-read-spec field tables (what raw data is available)
+- agentic-data-flow field tables (what raw data is available)
 - The investment firm analogy (what would an analyst actually write?)
 - The agent principle: raw data + computed projections, never interpretive labels
 
