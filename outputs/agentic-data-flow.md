@@ -31,18 +31,17 @@ Some fields appear in both snapshot and history — the agent needs the current 
 
 ## Architecture overview
 
-```text
-Agent ──→ MCP Server ──→ Gearbox SDK ──→ On-chain RPC
-Frontend ─────────────→ Gearbox SDK ──→ Backend API
-```
+Two access paths matter:
+
+- Agent path: agent → MCP server → Gearbox SDK → on-chain RPC
+- Frontend path: frontend → Gearbox SDK → backend API
 
 The current canonical runtime structure is the same one used in the latest developer docs and the updated staged-agent architecture.
 
-```text
-Discover → Analyze → Propose → Preview → Execute → Monitor
-             ↑                      ↓ fail
-             └──── monitor-triggered review ────┘
-```
+Canonical loop: Discover → Analyze → Propose → Preview → Execute → Monitor.
+
+- If Preview fails, the loop returns to Propose.
+- If monitoring identifies a meaningful change, the loop returns to Analyze.
 
 Six information stages: **Discover → Analyze → Propose → Preview → Execute → Monitor**.
 
@@ -83,56 +82,15 @@ Curator data is shared across pools and CMs. A standalone endpoint avoids duplic
 
 **What happens:** Discover returns a unified opportunity surface. The backend no longer splits the first pass into separate LP and leveraged-strategy product lanes. The agent scans `Opportunity` objects, then filters, ranks, and narrows the set for analysis.
 
-### Primary backend datatypes
+### Primary backend objects
 
-```typescript
-type OpportunityKind = "pool" | "strategy" | "market";
+This stage relies on three backend object families:
 
-interface Opportunity {
-  id: string;
-  chainId: number;
-  type: "pool" | "strategy";
-  title: string;
-  curatorId: string;
-  underlyingToken: TokenRef;
-  access: {
-    permissionless: boolean;
-    kycRequired: boolean;
-    kycUrl?: string | null;
-  };
-  risk: {
-    summary?: string | null;
-    warnings: string[];
-  };
-}
+- `Opportunity` — the shared opportunity envelope used for first-pass scanning.
+- `PoolOpportunity` — the pool-specific extension for lending opportunities.
+- `StrategyOpportunity` — the strategy-specific extension for leveraged opportunities.
 
-interface PoolOpportunity extends Opportunity {
-  type: "pool";
-  poolAddress: Address;
-  yield: YieldBreakdown;
-  supplied: number;
-  borrowed: number;
-  utilization: number;
-  tvl: string;
-  tvlUsd: number;
-  availableLiquidity: string;
-  collaterals: PoolCollateral[];
-}
-
-interface StrategyOpportunity extends Opportunity {
-  type: "strategy";
-  minDebt: string;
-  maxDebt: string;
-  borrowableLiquidity: string;
-  maxLeverage: number;
-  borrowApy: number;
-  maxLeverageYield: LeveragedYieldBreakdown;
-  bestBaseYield: YieldBreakdown;
-  collaterals: StrategyCollateral[];
-  isPaused?: boolean;
-  hasDelayedWithdrawal: boolean;
-}
-```
+Exact technical field references live in `../synthesis/backend-datatype-stage-mapping.md` and `../raw-data/dev-docs/types_.ts`.
 
 ### Common discover query dimensions
 
@@ -176,9 +134,9 @@ The tables below use human-readable data-group names in the first column. Exact 
 | Strategy collateral surface | "Which collateral paths and quota constraints exist?" | `collaterals: StrategyCollateral[]` | snapshot | ? |
 | Strategy operating flags | "Is the strategy currently usable, and does it involve non-atomic settlement?" | `isPaused`, `hasDelayedWithdrawal` | snapshot | ? |
 
-### Handoff: Discover → Analyze (`Opportunity[]`)
+### Handoff: Discover → Analyze (shortlisted opportunities)
 
-The agent takes the returned `Opportunity[]` feed, applies filters and ranking, and carries a narrowed subset into Analyze. The narrowing logic is agent-side, but the backend types for the discover surface are `Opportunity`, `PoolOpportunity`, and `StrategyOpportunity`. Exact field-level mappings now live in `../synthesis/backend-datatype-stage-mapping.md`.
+The agent takes the returned opportunity feed, applies filters and ranking, and carries a narrowed subset into Analyze. The narrowing logic is agent-side, but the backend objects for the discover surface remain `Opportunity`, `PoolOpportunity`, and `StrategyOpportunity`. Exact field-level mappings now live in `../synthesis/backend-datatype-stage-mapping.md`.
 
 ---
 
@@ -188,7 +146,7 @@ The agent takes the returned `Opportunity[]` feed, applies filters and ranking, 
 
 The LP has no health factor, no liquidation risk, and no leverage. Their risks are yield decay, exit liquidity drying up, bad debt socialization, and silent exposure changes by curators.
 
-### Primary backend datatypes
+### Primary backend inputs
 
 - `PoolOpportunity`
 - `YieldBreakdown`
@@ -294,7 +252,7 @@ The LP cares about changes that widen their risk surface: new risky collateral a
 | Field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
 | Parameter change log (pool-level) | "Has the curator been active?" — recent collateral additions, debt limit increases, or IRM changes signal an evolving risk profile. No changes in months = stable. Frequent changes = the agent monitors more actively. | event log | ? |
-| Pending governance changes | "What's about to change?" — queued transactions in Safe TX queue or timelock. Parsed as `Array<{ description, expected_execution, parameters }>`. Example: "BASE_INTEREST_RATE: 4% → 6%, executes in 48h." The agent assesses: does this change my risk profile? Should I wait before depositing? | snapshot | ? |
+| Pending governance changes | "What's about to change?" — queued transactions in Safe TX queue or timelock. The backend should return a structured list with description, expected execution time, and affected parameters. Example: "BASE_INTEREST_RATE: 4% → 6%, executes in 48h." The agent assesses: does this change my risk profile? Should I wait before depositing? | snapshot | ? |
 
 ---
 
@@ -304,7 +262,7 @@ The LP cares about changes that widen their risk surface: new risky collateral a
 
 Each field includes the agent's decision story: what question is being answered, what action follows from the answer.
 
-### Primary backend datatypes
+### Primary backend inputs
 
 - `StrategyOpportunity`
 - `LeveragedYieldBreakdown`
@@ -423,30 +381,22 @@ The existing Q2-CA covers generic collateral safety (LT, oracle, exit feasibilit
 | Field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
 | Parameter change log (CM-level) | "Has the curator been active?" — recent LT reductions = the agent's HF could drop again. Recent token forbids = exit routes may shrink. No changes in 6 months = stable. Frequent changes = the agent must monitor more actively. | event log | ? |
-| Pending governance changes | "What's about to change for my strategy?" — same as LP Q5: queued Safe TX / timelock transactions. `Array<{ description, expected_execution, parameters }>`. The agent checks: is an LT reduction coming? A token forbid? An IRM change that would spike borrow costs? | snapshot | ? |
+| Pending governance changes | "What's about to change for my strategy?" — same as LP Q5: queued Safe TX / timelock transactions. The backend should return a structured list with description, expected execution time, and affected parameters. The agent checks: is an LT reduction coming? A token forbid? An IRM change that would spike borrow costs? | snapshot | ? |
 
-### Handoff: Analyze → Propose (AnalyzedOpportunity)
+### Handoff: Analyze → Propose (analyzed shortlist)
 
-The Analyze stage produces a ranked `AnalyzedOpportunity[]` set. `../synthesis/memo-standard.md` remains the detailed reference for how this compression can be serialized, but the canonical handoff content is now aligned to the latest agent-loop structure.
+The Analyze stage produces a ranked analyzed shortlist. `../synthesis/memo-standard.md` remains the detailed reference for how this compression can be serialized, but the canonical handoff content is now aligned to the latest agent-loop structure.
 
-```typescript
-interface AnalyzedOpportunity {
-    id: string,
-    type: "LP" | "CA",
-    final_score: number,
-    adjusted_apy: number,
-    overall_risk: number,
-    profitability_summary: string,
-    risk_breakdown: {
-        collateral: number,
-        curator: number,
-        smart_contract: number,
-        market: number,
-        exit: number,
-    },
-    reasoning: string[],
-}
-```
+In plain language, each analyzed handoff item should contain:
+
+- opportunity identifier,
+- opportunity category,
+- final score,
+- adjusted return estimate,
+- overall risk score,
+- profitability summary,
+- risk breakdown across collateral, curator, smart-contract, market, and exit risks,
+- evidence-backed reasoning notes.
 
 Every compressed field must still be evidence-backed. The API serves raw facts from this document; the agent performs the reasoning and ranking.
 
@@ -456,29 +406,19 @@ Every compressed field must still be evidence-backed. The API serves raw facts f
 
 **What happens:** The agent chooses the optimal action — or decides to do nothing. This stage consumes analyzed candidates, existing position context, and route-building logic to construct a proposed action.
 
-**Input:** Array of `AnalyzedOpportunity` + agent portfolio constraints + existing positions (if rebalancing).
+**Input:** ranked analyzed opportunities, plus portfolio constraints and any existing positions if the action is a rebalance.
 
 **Output → Preview:**
 
-```typescript
-interface RawTx {
-    to: string,
-    calldata: string,
-    value?: string,
-}
+The proposal output should contain, for each recommended action:
 
-interface ProposedAction {
-    actions: Array<{
-        candidate_id: string,
-        action: "deposit" | "open_position" | "rebalance" | "do_nothing",
-        rationale: string,
-        amount_usd?: number,
-        target_leverage?: number,
-        collateral_token?: string,
-        raw_tx?: RawTx,
-    }>,
-}
-```
+- the candidate reference,
+- the chosen action type,
+- the rationale,
+- optional amount sizing,
+- optional target leverage,
+- optional collateral choice,
+- the exact unsigned transaction package when execution is required.
 
 This stage is not only transaction building. It also answers:
 
@@ -493,11 +433,11 @@ No new backend data requirements are introduced here. The stage works from Analy
 
 ## Stage 4: Preview — Universal transaction validation
 
-**What happens:** Preview simulates the exact `RawTx` bytes against current chain state. It is the universal security gate between Propose and Execute.
+**What happens:** Preview simulates the exact transaction package against current chain state. It is the universal security gate between Propose and Execute.
 
 **Agent question:** "Will this exact transaction do what I expect right now, or have conditions changed?"
 
-**Core rule:** the same bytes previewed are the bytes executed.
+**Core rule:** the same transaction package previewed is the one executed.
 
 If preview fails, the loop returns to **Propose**, not Analyze. The underlying analysis can still be valid even when the execution parameters need adjustment.
 
@@ -508,7 +448,7 @@ If preview fails, the loop returns to **Propose**, not Analyze. The underlying a
 | Expected shares at deposit amount | "How many dTokens will I receive?" — the agent compares to its model. Large deviation = pool state changed since analysis. | snapshot (computed, via ERC-4626 previewDeposit) | ? |
 | Share price (exchange rate) | "Has the share price moved since analysis?" — a drop could indicate bad debt event between analysis and execution. | snapshot | ? |
 | Pool TVL after deposit (projected) | "What's my concentration?" — if the agent would become >10% of the pool, it may want to reduce. | snapshot (computed) | ? |
-| Concentration percentage | "What share of the pool will I be?" — `my_deposit / (tvl + my_deposit)`. High concentration = the agent is the pool's liquidity risk. | snapshot (computed) | ? |
+| Concentration percentage | "What share of the pool will I be?" — the agent's deposit divided by projected post-deposit pool TVL. High concentration means the agent becomes part of the pool's liquidity risk. | snapshot (computed) | ? |
 | Deviation from proposal | "Has anything shifted since the action was proposed?" — the preview compares current snapshot to the data the proposal was based on. Flags: APY changed >10%, utilization changed >5pp, TVL changed >20%. | snapshot (computed) | ? |
 | Gas estimate (USD) | "What does execution cost?" — at small positions, gas can be material. | snapshot (computed) | ? |
 | Warnings | "Is there anything unusual?" — array of strings. Example: "pool utilization will exceed 95% after deposit", "share price dropped 0.5% since analysis." | snapshot (computed) | ? |
@@ -528,25 +468,17 @@ If preview fails, the loop returns to **Propose**, not Analyze. The underlying a
 | Warnings | Array of strings — for example: "borrowable liquidity dropped 40% since analysis", "HF 1.08, below 1.1 threshold." | snapshot (computed) | ? |
 | Multicall data | Ready-to-submit multicall transaction. | snapshot (computed) | ? |
 
-### Handoff: Preview → Execute (Execution-ready action)
+### Handoff: Preview → Execute (execution-ready decision)
 
-```typescript
-interface ExecutionReadyAction {
-    actions: Array<{
-        candidate_id: string,
-        status: "go" | "no_go",
-        reason?: string,
-        raw_tx: RawTx,
-        gas_estimate_usd: number,
-        expected_outcome: {
-            shares?: string,
-            health_factor?: number,
-            leverage?: number,
-        },
-        execution_mode?: "human_in_the_loop" | "bot_execution",
-    }>,
-}
-```
+The Preview-to-Execute handoff should contain:
+
+- the candidate reference,
+- go / no-go status,
+- rejection reason if the action is blocked,
+- the exact transaction package approved by Preview,
+- gas estimate in USD,
+- expected outcome summary, such as shares received, resulting Health Factor, or resulting leverage,
+- execution mode, either human-in-the-loop or bot execution.
 
 `no_go` actions loop back to Propose for parameter adjustment or alternative selection.
 
@@ -565,8 +497,8 @@ This stage does not introduce new backend data requirements. It consumes the pre
 
 The key guarantee remains:
 
-- same bytes previewed
-- same bytes executed
+- same transaction package previewed
+- same transaction package executed
 
 ---
 
@@ -576,7 +508,7 @@ The key guarantee remains:
 
 **Agent questions:** "Is yield holding?", "Can I still get out?", and "Has the pool changed since I entered?"
 
-### Primary backend datatypes
+### Primary backend inputs
 
 - `UserPoolPosition`
 - `YieldBreakdown<ClaimableIncentive>`
@@ -626,7 +558,7 @@ Not only curator parameter changes matter — organic borrower behavior can shif
 
 **Agent questions:** "Is my position safe?", "What's causing HF to move?", and "Am I making money?"
 
-### Primary backend datatypes
+### Primary backend inputs
 
 - `UserStrategyPosition`
 - `UserCollateral`
@@ -857,7 +789,7 @@ These are the loss vectors specific to RWA/KYC that don't exist with standard De
 - event log (change records): 34 event types — backend indexes on-chain events
 - merged RWA / KYC extension: 32 additional stage-specific fields, primarily snapshot fields with one dedicated event-log stream for whitelist changes
 
-**Handoff contracts defined:** Opportunity / PoolOpportunity / StrategyOpportunity → AnalyzedOpportunity → ProposedAction / RawTx → ExecutionReadyAction. See ../synthesis/staged-agent-architecture.md and ../synthesis/memo-standard.md for full definitions.
+**Handoff contracts defined:** opportunity feed → analyzed shortlist → proposed action plus transaction package → execution-ready action. See ../synthesis/staged-agent-architecture.md and ../synthesis/memo-standard.md for full definitions.
 
 **Stage numbering:** The current canonical sequence is Discover → Analyze → Propose → Preview → Execute → Monitor. Execute is Stage 5. Monitoring is Stage 6.
 
