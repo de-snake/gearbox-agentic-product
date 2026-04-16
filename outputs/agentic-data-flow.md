@@ -1,14 +1,5 @@
 # Agentic Data Flow — api.gearbox.finance
 
-**Date:** 2026-04-16  
-**From:** Product (Ilya S)  
-**To:** Backend Engineering  
-**Document type:** Final merged backend handoff  
-**Merged sources:** Original backend data requirements + RWA / KYC extension  
-**Action needed:** For each data group, confirm: (A) already available, (B) can add, (C) hard/expensive
-
----
-
 ## What this document is
 
 This is the final merged product-driven specification of what `api.gearbox.finance` needs to serve to third-party agents through MCP and SDK interfaces.
