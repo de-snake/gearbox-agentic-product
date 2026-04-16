@@ -83,104 +83,120 @@ Curator data is shared across pools and CMs. A standalone endpoint avoids duplic
 
 ---
 
-## Stage 0: Intent
+## Stage 1: Discover — Opportunities
 
-The agent already knows whether it is an LP (passive yield on a single token) or a CA agent (leveraged strategy on collateral). This decision happens before discovery — the two paths look at different data and filter differently.
+**What happens:** Discover returns a unified opportunity surface. The backend no longer splits the first pass into separate LP and leveraged-strategy product lanes. The agent scans `Opportunity` objects, then filters, ranks, and narrows the set for analysis.
 
-### Input: AgentTask
+### Primary backend datatypes
 
 ```typescript
-interface AgentTask {
-    role: "LP" | "CA" | "Any",
-    asset_class: "USD" | "ETH" | "BTC",  // matches frontend filter categories
-    amount_usd: number,
-    min_apy: number,
-    max_risk: "conservative" | "moderate" | "aggressive",
+type OpportunityKind = "pool" | "strategy" | "market";
+
+interface Opportunity {
+  id: string;
+  chainId: number;
+  type: "pool" | "strategy";
+  title: string;
+  curatorId: string;
+  underlyingToken: TokenRef;
+  access: {
+    permissionless: boolean;
+    kycRequired: boolean;
+    kycUrl?: string | null;
+  };
+  risk: {
+    summary?: string | null;
+    warnings: string[];
+  };
+}
+
+interface PoolOpportunity extends Opportunity {
+  type: "pool";
+  poolAddress: Address;
+  yield: YieldBreakdown;
+  supplied: number;
+  borrowed: number;
+  utilization: number;
+  tvl: string;
+  tvlUsd: number;
+  availableLiquidity: string;
+  collaterals: PoolCollateral[];
+}
+
+interface StrategyOpportunity extends Opportunity {
+  type: "strategy";
+  minDebt: string;
+  maxDebt: string;
+  borrowableLiquidity: string;
+  maxLeverage: number;
+  borrowApy: number;
+  maxLeverageYield: LeveragedYieldBreakdown;
+  bestBaseYield: YieldBreakdown;
+  collaterals: StrategyCollateral[];
+  isPaused?: boolean;
+  hasDelayedWithdrawal: boolean;
 }
 ```
 
-The agent arrives with a category (USD = stablecoin strategies, ETH = ETH-correlated, BTC = BTC-correlated), not a specific token. This feeds the Discover stage as input.
+### Common discover query dimensions
 
----
+The latest developer docs imply a discover query surface such as:
 
-## Stage 1a: Discover — LP
+- `chainIds`
+- `types`
+- `assets`
+- access filters such as permissionless-only
 
-**What happens:** LP agent has capital in a single token and wants to find pools to deposit into. Coarse filtering only — token match, yield, and pool size.
+The response surface is unified even when the agent later chooses to focus only on pools or only on strategies.
 
-**Agent question:** "Which pools accept my token and offer good yield?"
+### Base `Opportunity` fields
 
-| Field | Agent decision story | Data type | Status |
+| Datatype field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
-| Pool name | Identification | snapshot | ? |
-| Underlying token | "Do I have this token?" — primary filter, skip if no | snapshot | ? |
-| LP APY (total) | "Is the yield worth looking at?" — if below agent's floor, skip | snapshot (computed) | ? |
-| Pool TVL (in underlying token) | "Is this pool big enough to matter?" — small pool = concentration risk, skip | snapshot | ? |
-| Pool paused | "Is this pool operational?" — if paused, skip entirely. No point doing analysis on a paused pool. | snapshot | ? |
+| `id` | Stable identifier for later lookups and ranking. | snapshot | ? |
+| `chainId` | Multi-chain routing and comparison context. | snapshot | ? |
+| `type` | Distinguishes pool vs strategy at the opportunity layer. | snapshot | ? |
+| `title` | Human-readable label for UI and agent narration. | snapshot | ? |
+| `curatorId` | Trust anchor for later curator research. | snapshot | ? |
+| `underlyingToken: TokenRef` | Base token context for asset matching and sizing. | snapshot | ? |
+| `access.permissionless` | Fast filter for whether the agent can act without extra onboarding. | snapshot | ? |
+| `access.kycRequired` | Fast filter for whether compliance gating applies. | snapshot | ? |
+| `access.kycUrl` | Where the user is routed if KYC is required. | snapshot | ? |
+| `risk.summary` | Optional headline risk text for routing and first-pass prioritization. | snapshot | ? |
+| `risk.warnings` | Non-blocking warnings surfaced already at discovery time. | snapshot | ? |
 
----
+### `PoolOpportunity` extension fields
 
-## Stage 1b: Discover — CA (Strategy)
-
-**What happens:** CA agent has a market thesis (e.g., "long stETH vs ETH") and wants to find strategies that match. Coarse filtering — collateral type, capacity, and estimated yield.
-
-**Agent question:** "Which strategies let me hold the asset I want, and is there room?"
-
-| Field | Agent decision story | Data type | Status |
+| Datatype field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
-| Strategy/CM name | Identification | snapshot | ? |
-| Underlying token | "What do I borrow?" | snapshot | ? |
-| Collateral type (target asset) | "Can I hold the asset I want?" — primary filter. One strategy = one target. Skip if no match. | snapshot | ? |
-| Borrowable liquidity | "Is there room for my position?" — zero = skip | snapshot | ? |
-| Min/max debt | "Does my position size fit?" — skip if outside range | snapshot | ? |
-| Net APY estimate | "Is this directionally profitable?" — coarse filter: strategy yield x leverage - borrow cost | snapshot (computed) | ? |
-| Facade paused | "Can I actually open a position?" — if paused, skip entirely. No point doing analysis. | snapshot | ? |
-| Strategy key | Unique identifier: `[chain_id, cm_address, collateral_address]`. The agent uses this to reference a specific strategy across all subsequent stages. | snapshot | ? |
-| Availability | `"Permissionless"` or `"KYC'd"` — if KYC'd and the agent can't meet the requirement, skip. | snapshot | ? |
-| Points programs | `Array<{ program_name, multiplier }>` — informational only. Points have no guaranteed economic value; the agent notes them but does not factor them into yield calculations. | snapshot | ? |
-| Chain ID | Which chain this strategy is on — multi-chain context for cross-chain comparison. | snapshot | ? |
+| `poolAddress` | Concrete pool identifier for later detail reads and execution. | snapshot | ? |
+| `yield: YieldBreakdown` | Headline pool yield with incentive structure. | snapshot (computed) | ? |
+| `supplied` | Total supplied amount for pool context. | snapshot | ? |
+| `borrowed` | Total borrowed amount for liquidity context. | snapshot | ? |
+| `utilization` | First-pass exit-liquidity signal. | snapshot | ? |
+| `tvl` | Raw pool size in underlying units. | snapshot | ? |
+| `tvlUsd` | Normalized size metric for ranking across chains and assets. | snapshot | ? |
+| `availableLiquidity` | Immediate withdrawal capacity. | snapshot | ? |
+| `collaterals: PoolCollateral[]` | First-pass exposure surface for the pool. | snapshot | ? |
 
-### Cross-cutting discovery filter: KYC gating
+### `StrategyOpportunity` extension fields
 
-Both LP and CA agents hit the same gating question before any analysis happens. This is a hard binary filter — if the agent cannot pass KYC, everything downstream is irrelevant.
-
-#### LP discovery extension
-
-| Field | Agent decision story | Data type | Status |
+| Datatype field | Agent decision story | Data type | Status |
 |-------|---------------------|-----------|--------|
-| KYC required | "Do I need to be KYC'd to deposit?" — if the pool's underlying token is a KYC-wrapped asset (DefaultKYCUnderlying or OnDemandKYCUnderlying), the agent must be whitelisted in Securitize's registry to hold dTokens. If not KYC'd, skip. | snapshot | ? |
-| KYC provider | "Who runs the KYC?" — identifies the compliance gatekeeper (e.g., Securitize). The agent checks if it has a relationship with this provider. Different providers = different onboarding flows. | snapshot | ? |
+| `minDebt` | Lower sizing bound for entry. | snapshot | ? |
+| `maxDebt` | Upper sizing bound for entry. | snapshot | ? |
+| `borrowableLiquidity` | Capacity available for opening or increasing a position. | snapshot | ? |
+| `maxLeverage` | First-pass leverage ceiling. | snapshot | ? |
+| `borrowApy` | Cost side of the strategy at discovery time. | snapshot | ? |
+| `maxLeverageYield: LeveragedYieldBreakdown` | Headline strategy economics at maximum leverage. | snapshot (computed) | ? |
+| `bestBaseYield: YieldBreakdown` | Best unlevered yield path visible at discovery time. | snapshot (computed) | ? |
+| `collaterals: StrategyCollateral[]` | First-pass collateral and quota surface. | snapshot | ? |
+| `isPaused` | Operational availability flag. | snapshot | ? |
+| `hasDelayedWithdrawal` | Signals non-atomic settlement characteristics up front. | snapshot | ? |
 
-#### CA discovery extension
+### Handoff: Discover → Analyze (`Opportunity[]`)
 
-| Field | Agent decision story | Data type | Status |
-|-------|---------------------|-----------|--------|
-| KYC required | "Do I need KYC to open a Credit Account?" — if the CM uses a SecuritizeKYCFactory, the agent must be registered in Securitize's investor registry. Standard CMs use the regular DegenNFT gate. If KYC is required and the agent isn't registered, skip entirely. | snapshot | ? |
-| KYC provider | Same as LP — identifies the compliance gatekeeper. | snapshot | ? |
-| Factory address | "Where do I go to open an account?" — KYC-gated CMs route through a specific factory contract, not the standard CreditFacade. The agent needs to know the entry point. | snapshot | ? |
-
----
-
-**Why APY is computed differently:** LP APY = pool supply rate + incentives. CA APY = (strategy base yield x leverage) - borrow cost - fees. These are fundamentally different calculations.
-
-### Handoff: Discover → Analyze (Shortlist)
-
-Both LP and CA discovery produce a compressed shortlist that feeds the Analyze stage:
-
-```typescript
-interface Shortlist {
-    task: AgentTask,
-    candidates: Array<{
-        id: string,                    // pool_address (LP) or strategy_key (CA)
-        name: string,
-        headline_apy: number,          // apy_total (LP) or net_apy_estimate (CA)
-        headline_tvl_usd: number,
-        why_included: string,          // one-line: "highest organic yield in USD pools"
-        flags: string[],              // ["low_tvl", "incentive_dependent", "near_capacity"]
-    }>
-}
-```
-
-Compression: 50 pools/strategies → 3–5 candidates. Each candidate has one score (APY), one size metric (TVL), and a reason. Everything else is discarded. The Analyze stage uses this shortlist to decide where to do deep analysis.
+The agent takes the returned `Opportunity[]` feed, applies filters and ranking, and carries a narrowed subset into Analyze. The narrowing logic is agent-side, but the backend types for the discover surface are `Opportunity`, `PoolOpportunity`, and `StrategyOpportunity`.
 
 ---
 
@@ -188,7 +204,14 @@ Compression: 50 pools/strategies → 3–5 candidates. Each candidate has one sc
 
 **What happens:** LP agent has narrowed to 1–3 candidate pools. Deep analysis before depositing.
 
-The LP has no health factor, no liquidation risk, no leverage. Their risks are: yield decay, exit liquidity drying up, bad debt socialization, and silent exposure changes by curators.
+The LP has no health factor, no liquidation risk, and no leverage. Their risks are yield decay, exit liquidity drying up, bad debt socialization, and silent exposure changes by curators.
+
+### Primary backend datatypes
+
+- `PoolOpportunity`
+- `YieldBreakdown`
+- `PoolCollateral`
+- `TokenRef`
 
 ### Q1-LP: "Where does pool yield come from? Is it sustainable?"
 
@@ -230,7 +253,6 @@ Each CM is a separate risk envelope with its own collateral rules. A pool may ha
 | Borrowed amount | "How much debt is at risk through this CM right now?" — the agent checks if one CM dominates the pool's total debt (concentration risk). | snapshot | ? |
 | Debt limit | "How much MORE debt could accumulate through this CM?" — high remaining capacity = exposure can grow. | snapshot | ? |
 | Is paused (facade) | "Is this CM operational?" — paused CM can't take new positions (exposure shrinks), but existing underwater positions can't be liquidated either. This creates a second-level risk: bad debt can accumulate in paused CMs because the normal liquidation mechanism is disabled. The agent checks: is the CM paused AND does it have significant borrowed amount? | snapshot | ? |
-
 
 ### Q2-LP extension: "What RWA-specific risks am I exposed to?"
 
@@ -299,6 +321,14 @@ The LP cares about changes that widen their risk surface: new risky collateral a
 **What happens:** CA agent has narrowed to 1–3 candidate strategies. Deep analysis before opening a leveraged position.
 
 Each field includes the agent's decision story: what question is being answered, what action follows from the answer.
+
+### Primary backend datatypes
+
+- `StrategyOpportunity`
+- `LeveragedYieldBreakdown`
+- `YieldBreakdown`
+- `StrategyCollateral`
+- `TokenRef`
 
 ### Q1-CA: "What will this position cost me, and is the yield worth it?"
 
@@ -564,6 +594,12 @@ The key guarantee remains:
 
 **Agent questions:** "Is yield holding?", "Can I still get out?", and "Has the pool changed since I entered?"
 
+### Primary backend datatypes
+
+- `UserPoolPosition`
+- `YieldBreakdown<ClaimableIncentive>`
+- `PnlBreakdown`
+
 ### Yield and value tracking
 
 | Field | Agent decision story | Data type | Status |
@@ -607,6 +643,13 @@ Not only curator parameter changes matter — organic borrower behavior can shif
 **What happens:** CA agent periodically checks position health. The core metric is health factor (HF), but the agent also needs to understand WHY HF changed to decide whether to act (deleverage, exit) or wait (temporary volatility). The backend provides raw facts — the agent does the reasoning.
 
 **Agent questions:** "Is my position safe?", "What's causing HF to move?", and "Am I making money?"
+
+### Primary backend datatypes
+
+- `UserStrategyPosition`
+- `UserCollateral`
+- `YieldBreakdown<ClaimableIncentive>`
+- `PnlBreakdown`
 
 ### Position state
 
@@ -731,7 +774,6 @@ These are on-chain events needed for the parameter change log and Stage 6 monito
 | B5 | `SetPriceFeed(token, feed, staleness, skip)` | All: valuations may shift | P0 |
 | B6 | `Paused / Unpaused` (Pool or Facade) | All: access change | P0 |
 
-
 ### "Risk exposure changed"
 
 | # | Event | Agent impact | Priority |
@@ -755,7 +797,6 @@ These are on-chain events needed for the parameter change log and Stage 6 monito
 | B19 | `SetWithdrawFee(fee)` | LP: exit cost changed | P2 |
 | B20 | `UpdateFees(...)` | CA: liquidation costs changed | P2 |
 | B21 | `SetExpirationDate(date)` | CA: lifecycle constraint | P1 |
-
 
 ### "Something happened" (operational)
 
@@ -812,8 +853,9 @@ These are the loss vectors specific to RWA/KYC that don't exist with standard De
 | Category | Count |
 |----------|-------|
 | Curator profile fields (standalone) | 7 |
-| LP discovery fields (Stage 1a) | 5 |
-| CA discovery fields (Stage 1b) | 11 (+4: strategy_key, availability, points, chain_id) |
+| Opportunity base fields (Stage 1) | 11 |
+| PoolOpportunity discovery extension fields | 9 |
+| StrategyOpportunity discovery extension fields | 10 |
 | LP analyze fields (Stage 2a) | ~23 (+1: pending governance) |
 | CA analyze fields (Stage 2b) | ~24 (+5: entry cost, breakeven, risk_disclosure, pending gov, borrow rate xref) |
 | LP preview fields (Stage 4) | 8 (new) |
@@ -833,7 +875,7 @@ These are the loss vectors specific to RWA/KYC that don't exist with standard De
 - event log (change records): 34 event types — backend indexes on-chain events
 - merged RWA / KYC extension: 32 additional stage-specific fields, primarily snapshot fields with one dedicated event-log stream for whitelist changes
 
-**Handoff contracts defined:** AgentTask → Shortlist → AnalyzedOpportunity → ProposedAction / RawTx → ExecutionReadyAction. See ../synthesis/staged-agent-architecture.md and ../synthesis/memo-standard.md for full definitions.
+**Handoff contracts defined:** Opportunity / PoolOpportunity / StrategyOpportunity → AnalyzedOpportunity → ProposedAction / RawTx → ExecutionReadyAction. See ../synthesis/staged-agent-architecture.md and ../synthesis/memo-standard.md for full definitions.
 
 **Stage numbering:** The current canonical sequence is Discover → Analyze → Propose → Preview → Execute → Monitor. Execute is Stage 5. Monitoring is Stage 6.
 

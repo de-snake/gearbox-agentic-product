@@ -11,6 +11,7 @@ This structure is meant to be easy to navigate for both people and agents.
 ## Fast navigation
 
 ### If you want the final answer
+
 Start with:
 
 - `outputs/agentic-data-flow.md`
@@ -18,15 +19,18 @@ Start with:
 This is the main deliverable.
 
 ### If you want to understand why the final answer looks this way
+
 Then read:
 
 - `synthesis/loss-vectors-summary.md`
 - `synthesis/project-discovery.md`
 - `synthesis/staged-agent-architecture.md`
 - `synthesis/memo-standard.md`
+- `synthesis/backend-datatype-stage-mapping.md`
 - `synthesis/call-analysis-and-action-items.md`
 
 ### If you want the original evidence
+
 Go to:
 
 - `raw-data/call-transcripts/`
@@ -41,6 +45,7 @@ Go to:
 This is the lowest-level material in the repo.
 
 It includes:
+
 - call transcripts,
 - focused research documents,
 - source product docs from the team,
@@ -64,12 +69,14 @@ Nothing in `raw-data/` is the final framing. It is evidence, input, or direct so
 This layer compresses the raw data into reusable understanding.
 
 These files answer questions like:
+
 - what matters,
 - why it matters,
 - how the agent lifecycle should be structured,
 - how evidence should be compressed before decision-making.
 
 In other words:
+
 - `raw-data/` is evidence,
 - `synthesis/` is interpretation with references,
 - `outputs/` is the final deliverable.
@@ -85,12 +92,14 @@ Right now the main output is:
 ## Recommended reading order
 
 ### For a human reviewer
+
 1. `outputs/agentic-data-flow.md`
 2. `synthesis/loss-vectors-summary.md`
 3. `synthesis/staged-agent-architecture.md`
 4. dive into `raw-data/` only where needed
 
 ### For an agent
+
 1. load `outputs/agentic-data-flow.md`
 2. use `synthesis/` to recover the decision logic behind the structure
 3. use `raw-data/` only when primary evidence is needed
@@ -100,10 +109,12 @@ Right now the main output is:
 The repo is not organized as a generic document dump.
 
 It is organized as a reasoning stack:
+
 - raw evidence,
 - compressed understanding,
 - final output.
 
 That makes it easier to answer both of these questions:
+
 - "What is the final answer?"
 - "Where did that answer come from?"
