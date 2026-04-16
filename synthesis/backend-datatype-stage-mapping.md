@@ -1,10 +1,11 @@
 # Backend Datatype Stage Mapping
 
 **Sources:**
-- `../outputs/agentic-data-flow.md`
+- `../outputs/agentic-data-flow/0.introduction.md`
+- numbered stage and appendix files under `../outputs/agentic-data-flow/`
 - `../raw-data/dev-docs/types_.ts`
 
-This document keeps `../outputs/agentic-data-flow.md` readable by using human-readable data-group names, then maps those groups back to exact technical references from `types_.ts`.
+This document maps the split files under `../outputs/agentic-data-flow/` back to exact technical references from `types_.ts`, while keeping the main output readable for non-developers.
 
 Its purpose is to answer three questions:
 
@@ -18,7 +19,7 @@ Its purpose is to answer three questions:
 
 | Column | Meaning |
 |---|---|
-| Human-readable data name | The label that should stay readable in `agentic-data-flow.md`. |
+| Human-readable data name | The label that should stay readable in the split `agentic-data-flow/` files. |
 | Agent story | The concrete question the agent is trying to answer. |
 | Tech name references | Exact field or type references tied to that data group. |
 | Coverage in `types_.ts` | Whether the current backend draft already covers it, partially covers it, or does not cover it yet. |
@@ -83,7 +84,7 @@ Note: `OpportunityKind` includes `"market"`, but the current output flow only us
 | Exit feasibility and delayed withdrawals | "If I need to unwind, what paths are actually available?" | `StrategyOpportunity.minDebt`, `StrategyOpportunity.maxDebt`, `StrategyOpportunity.borrowableLiquidity`, `StrategyOpportunity.hasDelayedWithdrawal`, `UserCollateral.expectedWithdrawalTimestamp` | Partial — there is an early delayed-withdrawal signal, but no full delayed-withdrawal state |
 | Oracle and pricing context | "How is this collateral priced, and can that pricing fail in practice?" | oracle methodology, main/reserve oracle history, staleness windows | Missing — no oracle metadata types are drafted |
 | RWA asset and compliance context | "What off-chain or compliance constraints does this collateral bring into the position?" | issuer, asset type, redemption mechanics, NAV update frequency, transfer restriction, KYC/access properties | Missing — needs `RwaAssetProfile` / `RwaComplianceProfile` |
-| Analyze handoff compression | "What compact result should Analyze pass into Propose?" | `AnalyzedOpportunity` in the output doc | Missing — stage-local synthesis type is not drafted in `types_.ts` |
+| Analyze handoff compression | "What compact result should Analyze pass into Propose?" | `AnalyzedOpportunity` in the split output spec | Missing — stage-local synthesis type is not drafted in `types_.ts` |
 
 ---
 
@@ -91,8 +92,8 @@ Note: `OpportunityKind` includes `"market"`, but the current output flow only us
 
 | Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
 |---|---|---|---|
-| Proposed action set | "What should I do next: deposit, open, rebalance, reduce, close, or do nothing?" | `ProposedAction` from `agentic-data-flow.md` | Missing — no proposed-action type is drafted yet |
-| Transaction bytes | "What exact transaction do I want Preview to simulate?" | `RawTx` from `agentic-data-flow.md` | Missing |
+| Proposed action set | "What should I do next: deposit, open, rebalance, reduce, close, or do nothing?" | `ProposedAction` from the split `outputs/agentic-data-flow/` spec | Missing — no proposed-action type is drafted yet |
+| Transaction bytes | "What exact transaction do I want Preview to simulate?" | `RawTx` from the split `outputs/agentic-data-flow/` spec | Missing |
 | Route-building result | "Which route did I choose, and what economics did it imply?" | router output used when building strategy actions | Missing — no route result type is drafted yet |
 
 ---
@@ -101,12 +102,12 @@ Note: `OpportunityKind` includes `"market"`, but the current output flow only us
 
 | Human-readable data name | Agent story | Tech name references | Coverage in `types_.ts` |
 |---|---|---|---|
-| Preview verdict | "If I simulate these exact bytes right now, is the action still acceptable?" | `sdk.previewTransaction(rawTx)` return surface described in the output doc | Missing — needs `TransactionPreview` |
+| Preview verdict | "If I simulate these exact bytes right now, is the action still acceptable?" | `sdk.previewTransaction(rawTx)` return surface described in the split output spec | Missing — needs `TransactionPreview` |
 | Decoded action list | "What will this transaction actually do?" | decoded preview actions | Missing — needs `PreviewAction` |
 | Balance changes | "Which tokens will move, and by how much?" | preview balance deltas | Missing — needs `BalanceChange` |
 | Route and price-impact detail | "Is the route still economically acceptable at current state?" | route detail and price-impact output from Preview | Missing — needs `PreviewRoute` |
 | Exit and settlement flags | "Will this create delayed withdrawals, forced holds, or other non-atomic exit states?" | preview exit / settlement fields | Missing — needs `ExitInfo` |
-| Preview-to-execute handoff | "What exact payload should Execute trust after Preview passes?" | `ExecutionReadyAction` from the output doc | Missing |
+| Preview-to-execute handoff | "What exact payload should Execute trust after Preview passes?" | `ExecutionReadyAction` from the split output spec | Missing |
 
 Preview is the clearest mismatch today: the runtime docs make it central, but `types_.ts` does not draft any preview-return type yet.
 

@@ -1,13 +1,14 @@
 # Apr 3 Call — Analysis & Action Items
 
 **Source:** ../raw-data/call-transcripts/2026-04-03-product-call-transcript.md (transcript), ../raw-data/source-docs/2026-04-03-team-updated-spec.md (their updated spec)
-**Compared against:** ../outputs/agentic-data-flow.md (our spec)
+**Compared against:** ../outputs/agentic-data-flow/0.introduction.md (our spec)
 
 ---
 
 ## 1. What their doc has that ours doesn't
 
 ### A. Propose / Preview / Execute stages (their stages 3–5)
+
 Our spec says "deployment is execution, doesn't need additional info." Their doc disagrees — they spec'd four tools:
 
 - `prepare_deposit` (LP) — computes expected shares, breakeven days, concentration %, withdrawal fee impact
@@ -18,12 +19,14 @@ Our spec says "deployment is execution, doesn't need additional info." Their doc
 **Assessment:** These stages are real and needed. The "proposal" math (breakeven calculation, concentration check, constraint validation) isn't covered by our Evaluate fields. The preview/simulation is a separate concern from data — it's execution infrastructure. But the *data fields* in prepare_deposit and prepare_position surface information our spec should acknowledge.
 
 **Fields to add to our spec:**
+
 - Breakeven days (given APY + withdrawal fee) — LP Evaluate or separate Propose section
 - Concentration % after deposit — LP risk consideration
 - Entry cost decomposition (quota increase fee + estimated swap impact) — CA, partially covered but not as a combined "entry cost" concept
 - Constraint validation bundle (debt in range, borrowable sufficient, quota available, not paused, not expired) — CA pre-flight checklist
 
 ### B. Standalone `get_curator` tool
+
 Their doc has curator as its own endpoint with: address, name, bad_debt history, url, socials.
 
 Our spec mentions curator_name and curator_address inline in Evaluate. Their approach is better — curator data is shared across pools/CMs, so a standalone endpoint avoids duplication and lets the agent build a curator trust model.
@@ -31,12 +34,15 @@ Our spec mentions curator_name and curator_address inline in Evaluate. Their app
 **Action:** Add `/curators` endpoint description to our spec (we already have it in Architecture overview but never spec'd the fields).
 
 ### C. Strategy-level fields we're missing
+
 - `point_line: string` — which point program applies (their discover stage)
 - `availability: "Permissionless" | "KYC'd"` — access requirements (their discover stage)
 - `strategy_key: [chain_id, cm_address, collateral_address]` — canonical identifier (from transcript)
 
 ### D. Agent task / intent formalization
+
 Their doc has:
+
 ```typescript
 interface AgentTask {
     task: "Any" | "LP" | "Strategy",
@@ -44,6 +50,7 @@ interface AgentTask {
     amount: number,
 }
 ```
+
 Our spec has Intent as prose. Their formalization is useful for the API contract.
 
 ---
@@ -51,43 +58,52 @@ Our spec has Intent as prose. Their formalization is useful for the API contract
 ## 2. Ideas from the transcript to add/alter in our spec
 
 ### E. APY harmonization problem
+
 Multiple backend services compute APY differently. The team acknowledged this is a mess. Our spec assumes a clean `apy_total` but doesn't address the computation source.
 
 **Action:** Add a note in our spec about APY source requirements — single source of truth, not frontend-computed.
 
 ### F. Entry/exit cost as first-class concept
+
 Transcript discussion (line ~120): swap slippage + price impact can eat weeks of yield on low-APY strategies. Someone pointed out that swapping USDC↔USDT costs ~$100-200 on a moderate position, and if the strategy earns 3-4%, that's weeks of profit gone.
 
 **Action:** Our spec has `price_impact_via_router` in Exit feasibility. We should add a symmetric "Entry cost" section for CA Evaluate: estimated swap cost to enter the strategy at position size.
 
 ### G. Future state changes (pending governance)
+
 Transcript (lines ~72-76): both agreed that pending governance transactions (queued in timelock) should be visible in Analyze AND Monitor. The team discussed parsing Safe TX queue to show "what changes are coming."
 
 **Action:** Add to our spec:
+
 - In Evaluate (both LP and CA): `pending_changes: Array<{ description, expected_execution_date, parameters }>` — from governance queue
 - In Monitor: same, filtered by `since_timestamp`
 
 ### H. Emergency state information
+
 Transcript mentions: pause status, forbidden tokens, emergency actions. Our spec has `facade_paused` but doesn't bundle emergency info.
 
 **Action:** Consider grouping pause + forbidden tokens + loss policy into an "emergency state" block in Monitor.
 
 ### I. Liquidation ecosystem health
+
 Transcript (line ~146): Dima's idea — number of active liquidators, whether liquidation market is competitive vs single-liquidator. More liquidators = safer for both LP and CA.
 
 **Assessment:** Interesting but hard to serve. Would require indexing liquidation events and extracting unique liquidator addresses. Mark as P2/future.
 
 ### J. Risk disclosure text
+
 Transcript discusses a `risk_disclosure: string` field — a text block explaining "in case of bad debt, all liquidations are forbidden" or similar structural risks.
 
 **Action:** Add to CA Evaluate Q2 or as a standalone field. Simple text, low effort, high value for agent reasoning.
 
 ### K. Borrow rate as risk, not just cost
+
 Transcript debate (lines ~124-135): borrow rate volatility can cause liquidation (not just reduce profit). Historical borrow rate spikes have wiped months of yield in days.
 
 **Assessment:** Our spec already has borrow rate in Q1-CA as cost. The risk framing means we should also reference borrow rate history in Q2-CA (collateral safety) with a note that extreme rate spikes can cause liquidation via interest accrual.
 
 ### L. Points — minimal display
+
 Transcript consensus: show project name + multiplier only, don't try to compute economic value.
 
 **Action:** Our spec doesn't mention points at all. Add to CA Discover: `points: Array<{ program_name, multiplier }>` — informational only, no economic valuation.
@@ -148,7 +164,7 @@ These are strengths to preserve — don't lose them in any merge.
 
 ## 5. Proposed next steps
 
-1. Apply items 1–9 to ../outputs/agentic-data-flow.md (I can do this now)
+1. Apply items 1–9 to the split ../outputs/agentic-data-flow/ files (I can do this now)
 2. Discuss item 10 (Propose/Preview) with you — this is a structural question: does our spec stay as "data requirements only" or expand to cover execution-stage data needs?
 3. Send updated spec to Gregory's team for A/B/C review
 4. Use their doc (../raw-data/source-docs/2026-04-03-team-updated-spec.md) as the reference for MCP tool signatures — it's the tool-shape companion to our data-shape spec

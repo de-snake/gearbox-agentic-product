@@ -1,7 +1,7 @@
 # Gearbox Consumer Information System — Discovery
 
 **Status:** Phases 1-4 complete. Discovery finished and handed off to shaping. The shaping doc is not included in this share repo.
-**Related:** Working demo (MCP server + SDK integration) is in `../agent-demo/`. This spec defines the full system; the demo was the Phase 1 proof-of-concept.
+**Related:** Working demo (MCP server + SDK integration) is not included in this share repo. This spec defines the full system; the demo was the Phase 1 proof-of-concept.
 **Date:** 2026-03-31
 
 ---
@@ -76,6 +76,7 @@ The primary sustainability signal. Real Yield = Revenue - Emissions. If negative
 | APY range sanity | Lending 2-6%, LP 4-10%, Structured 6-12%, Aggressive 15-50%+ | Benchmark |
 
 Yield must be broken down by source (a single APY number hides sustainability):
+
 - **Base yield** — organic from borrower interest / protocol fees
 - **Incentive yield** — token emissions (GEAR rewards, partner incentives)
 - **Underlying protocol yield** — from collateral asset itself (staking, LP)
@@ -95,6 +96,7 @@ This is NOT about checking Gearbox itself — the agent is already using Gearbox
 | Curator risk signals | Has the curator flagged concerns? | Recent parameter changes, cap reductions | Chaos Labs Risk Oracle (on-chain, free) |
 
 Existing composite rating frameworks for reference:
+
 - Exponential.fi: A-F grades (powers DeFi Llama). Backtested: A-rated = zero defaults; F-rated = ~80% default.
 - Credora (by RedStone): A-D ratings with Probability of Default, available as on-chain risk oracle.
 - No universal standard exists.
@@ -119,6 +121,7 @@ Market average utilization: 56.8%. Stablecoin pools typically >65%.
 Every link is a trust point: Curator → Adapter → Underlying protocol → Oracle → Custodian.
 
 Key concerns:
+
 - Curator track record and incentive alignment (earn fees but bear no losses)
 - Top 5 curators control ~43% of market
 - No shared risk definitions — "Prime," "Core," "Aggressive" mean different things per curator
@@ -258,6 +261,7 @@ Triggered by Job 2. Loops back to Job 2 after adjustment.
 | Delayed withdrawal | No loss but ~7 day wait |
 
 **Core theme: liquidity is the cross-cutting concern.** It appears in:
+
 - Entry: pool capacity (LP size filter), borrowable amount
 - Monitoring: utilization changes
 - Exit (LP): free liquidity in pool
@@ -320,6 +324,7 @@ Every curator/platform invents its own scoring. Gearbox doesn't need to solve th
 ### 4. Failure pattern: info exists but is inaccessible
 
 Post-mortems show three patterns:
+
 1. Warning info existed but was drowned by promotional narrative (UST/Anchor)
 2. Flaw was too technical for users to assess (Euler — missing invariant check)
 3. Off-chain risk invisible to depositors (Resolv — 18 audits but single AWS key)
@@ -333,6 +338,7 @@ The information system should surface risk prominently, not bury it.
 **In scope:** Agent-first information system for Gearbox Protocol. Two agent types: LP agents and leverage agents. UI adaptation is a follow-on task.
 
 **Out of scope (separate products/systems):**
+
 - Liquidators/keepers — separate infrastructure
 - Curators — own tooling and dashboards
 - Governance participants — separate workflow
@@ -354,13 +360,14 @@ Completed in the internal flow-mapping document (not included in this share repo
 
 ### Phase 3: Information Architecture [DONE]
 
-Completed in the internal information-architecture document (not included in this share repo). 7 entities defined with loss-vector-grounded properties, relationship map, and consumer matrix. Backend handoff spec in ../outputs/agentic-data-flow.md.
+Completed in the internal information-architecture document (not included in this share repo). 7 entities defined with loss-vector-grounded properties, relationship map, and consumer matrix. Backend handoff spec in ../outputs/agentic-data-flow/0.introduction.md and the numbered files under ../outputs/agentic-data-flow/.
 
 ### Phase 4: Handoff to Shaping [DONE]
 
 Completed as an internal shaping handoff. The shaping doc is not included in this share repo. All discovery outputs packaged, all open questions resolved, ready for shaping skill.
 
 **Transition criteria:**
+
 - [x] All user types identified
 - [x] Primary JTBD has complete decision chain
 - [x] Due diligence information requirements mapped
