@@ -33,8 +33,8 @@ That is the structure the SDK, MCP server, preview flow, and execution modes are
 
 ## Core architecture
 
-- Agent path: agent → MCP server → Gearbox SDK → on-chain RPC
-- Frontend path: frontend → Gearbox SDK → backend API
+- Agent path: agent → MCP server → Gearbox SDK
+- Frontend path: frontend → Gearbox SDK
 
 The important architecture decision is that both agents and frontends sit on top of the same SDK surface.
 
