@@ -11,6 +11,7 @@
 A standard for the structured memo that an Analyst agent produces after deep DD and passes to the Investment Committee agent. The memo is the critical compression layer — it must contain everything the committee needs to make an allocation decision, backed by evidence, with no interpretive labels.
 
 We define:
+
 - **Standard** — required sections, required evidence fields, validation rules
 - **Reference implementation** — our specific compression logic (thresholds, trend computation, summary generation)
 
@@ -21,6 +22,7 @@ Third parties can use our implementation out of the box or replace it while conf
 ## Industry research — what the best risk teams do
 
 ### Sources analyzed
+
 - **Gauntlet:** Parameter recommendations (Aave/Compound forums), market risk assessments, Morpho vault curation methodology, new asset listing framework
 - **Chaos Labs:** Risk Steward cap adjustments, new asset onboarding assessments (Aave)
 - **LlamaRisk:** Collateral risk assessments (LSTs, stablecoins), Aave V3 framework v1.1
@@ -33,6 +35,7 @@ Third parties can use our implementation out of the box or replace it while conf
 Every serious framework shares these properties:
 
 **1. Numbers, not labels**
+
 | Bad | Good (actual examples from reports) |
 |---|---|
 | Liquidity: Adequate | $2.3M available at 7.5% slippage via Curve + Uniswap |
@@ -49,12 +52,14 @@ Every report ends with a concrete specification table: Parameter | Current | Rec
 
 **4. Standard risk taxonomy**
 All frameworks converge on four risk categories:
+
 - Market risk (liquidity, volatility, concentration)
 - Technology risk (smart contracts, oracles, upgradeability)
 - Counterparty risk (governance, custody, admin keys)
 - Regulatory/legal risk (jurisdiction, compliance)
 
 For Gearbox agent context, we adapt this to:
+
 - **Profit** (yield mechanics, cost structure, entry/exit friction)
 - **Market risk** (liquidity, volatility, oracle)
 - **Protocol risk** (smart contract, curator, governance parameters)
@@ -328,6 +333,7 @@ A conforming memo MUST pass these checks:
 Our implementation compresses raw data from `agentic-data-flow` fields into memo fields. Key computations:
 
 ### Trend computation
+
 ```
 Input: 90-day daily series [v1, v2, ..., v90]
 Output: { mean, std_dev, min, max, trend_direction, trend_slope_daily }
@@ -340,31 +346,39 @@ trend_direction =
 ```
 
 ### Incentive dependency
+
 ```
 incentive_dependency_pct = (apy_incentive_merkl + apy_incentive_other) / apy_total
 ```
+
 Reference implementation flags >50% as a key concern.
 
 ### Entry cost / breakeven (CA)
+
 ```
 total_entry_cost_bps = quota_increase_fee_bps + estimated_swap_impact_bps
 daily_net_yield_bps = net_apy_at_target_leverage / 365
 breakeven_days = total_entry_cost_bps / daily_net_yield_bps
 ```
+
 Reference implementation flags breakeven > 30 days as a key concern.
 
 ### Concentration check
+
 ```
 largest_single_exposure_pct = max(token.pct_of_total for token in exposure.tokens)
 ```
+
 Reference implementation flags >70% single-token exposure.
 
 ### Oracle health computation
+
 ```
 For each token:
   stale_episodes_90d = count(gaps > heartbeat_seconds in 90d price feed)
   main_reserve_max_spread = max(abs(main - reserve) / main) over 90d
 ```
+
 Reference implementation flags: stale_episodes > 3 or max_spread > 2%.
 
 ---

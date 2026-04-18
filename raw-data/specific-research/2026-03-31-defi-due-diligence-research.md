@@ -8,6 +8,7 @@ Date: 2026-03-31
 ### 1. Due Diligence Is a Layered Problem
 
 Risk decomposes into multiplicative layers (not additive):
+
 - **Chain risk** (L2 maturity, exit windows, data availability)
 - **Protocol risk** (audits, governance, code maturity, admin controls)
 - **Asset risk** (peg stability, backing, tokenomics)
@@ -18,6 +19,7 @@ Exponential.fi's framework (which powers DeFi Llama) compounds these — a proto
 ### 2. No Universal Risk Standard Exists
 
 Every curator, platform, and aggregator invents its own:
+
 - Exponential: A-F letter grades
 - Galaxy SeC FiT PrO: 16-100 numerical
 - Block Analitica: 0-100 Market Risk Score
@@ -37,6 +39,7 @@ No Moody's/S&P equivalent. An arXiv paper notes DeFi "needs AAA/BBB ratings with
 ### 4. What Users Actually Want to Know (and Can't Find)
 
 From post-incident analysis and community discussions:
+
 1. **Where does the yield come from?** Organic (fees, interest) vs. incentivized (token emissions). Real Yield = Revenue - Emissions
 2. **What happens when I try to exit?** Liquidity conditions, utilization zones (<45% cold, 45-80% optimal, 80-90% elevated, >90% critical)
 3. **How does this behave under stress?** No standard stress testing exists
@@ -76,6 +79,7 @@ From post-incident analysis and community discussions:
 ### Q1: DeFi Risk Assessment Frameworks
 
 **Sources:**
+
 - Exponential DeFi Whitepaper (exponential.fi/whitepaper)
 - Galaxy SeC FiT PrO Framework (galaxy.com)
 - EEA DeFi Risk Assessment Guidelines v1 (entethalliance.org)
@@ -99,12 +103,14 @@ Exponential backtested: A-rated protocols had zero defaults; F-rated had ~80% de
 ### Q2: Institutional DeFi Due Diligence
 
 **Sources:**
+
 - Stripe stablecoin yield guide
 - DAO Treasury Management Framework
 - Kiln OmniVault ($600M+ TVL)
 - Galaxy SeC FiT PrO
 
 **Institutional checklist:**
+
 1. Understand the stablecoin/asset itself (audit frequency, backing, issuer)
 2. Assess counterparty/protocol risk (audits, governance, reserves)
 3. Trace the yield source ("yields without transparency hide leverage or subsidies")
@@ -132,6 +138,7 @@ Exponential backtested: A-rated protocols had zero defaults; F-rated had ~80% de
 ### Q4: Risk Decomposition Categories
 
 **Near-universal categories:**
+
 - Smart Contract Risk (~70% of all DeFi losses)
 - Oracle Risk
 - Liquidity Risk
@@ -139,6 +146,7 @@ Exponential backtested: A-rated protocols had zero defaults; F-rated had ~80% de
 - Governance/Counterparty Risk
 
 **Extended categories:**
+
 - Regulatory/Compliance Risk
 - Systemic/Contagion Risk
 - Bridge Risk
@@ -146,6 +154,7 @@ Exponential backtested: A-rated protocols had zero defaults; F-rated had ~80% de
 - Operational/User Error Risk
 
 **Yield-specific categories:**
+
 - Yield Sustainability (organic vs. incentivized)
 - Impermanent Loss
 - Liquidation Risk
@@ -171,6 +180,7 @@ Exponential backtested: A-rated protocols had zero defaults; F-rated had ~80% de
 **Real Yield = Revenue - Emissions** (negative = unsustainable)
 
 **Utilization zones:**
+
 - <45%: Cold (excess supply, low yields)
 - 45-80%: Optimal (balanced)
 - 80-90%: Elevated (approaching rate kink)
@@ -179,6 +189,7 @@ Exponential backtested: A-rated protocols had zero defaults; F-rated had ~80% de
 **Market average:** 56.8% across 53 tracked pools.
 
 **Sustainability signals:**
+
 - Rewards paid in established assets vs. native tokens only
 - TVL behavior after incentive reduction (sharp drop = mercenary)
 - Revenue-to-emission ratio trending

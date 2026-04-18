@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gearbox · Strategies (unified Discover)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #0a0c0c;
+    color: #e8eaea;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- NAV ---------- */
+  .nav {
+    display: flex;
+    align-items: center;
+    padding: 18px 32px;
+    border-bottom: 1px solid #15191a;
+    background: #0a0c0c;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo { font-weight: 600; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, #ff8a3a 0%, #ff3a6e 100%);
+    border-radius: 6px;
+    display: inline-block;
+  }
+  .nav-items { display: flex; gap: 36px; margin: 0 auto; }
+  .nav-item { color: #6e7575; cursor: pointer; font-size: 15px; padding: 22px 0; position: relative; }
+  .nav-item.active { color: #ffffff; }
+  .nav-item.active::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+    background: #e91e63;
+  }
+  .nav-right { display: flex; gap: 12px; align-items: center; }
+  .wallet {
+    background: #161a1b;
+    border: 1px solid #1f2425;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 13px;
+    color: #c8cccc;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    background: #161a1b;
+    border: 1px solid #1f2425;
+    border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    color: #888; cursor: pointer;
+  }
+
+  /* ---------- PAGE HEADER ---------- */
+  .page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 36px 32px 80px;
+  }
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; }
+  .page-title { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+  .page-sub { color: #6e7575; margin-top: 6px; font-size: 14px; }
+  .seg {
+    display: inline-flex;
+    background: #14181a; border: 1px solid #1f2425;
+    border-radius: 10px; padding: 4px;
+  }
+  .seg button {
+    background: transparent; border: 0; color: #8b9090;
+    padding: 7px 14px; border-radius: 7px; cursor: pointer; font-size: 13px;
+  }
+  .seg button.on { background: #1d2326; color: #fff; }
+
+  /* ---------- FILTER BAR ---------- */
+  .filters {
+    display: flex; gap: 10px; align-items: center;
+    padding: 14px 16px;
+    background: #11151700;
+    border: 1px solid #1a1f20;
+    background: linear-gradient(180deg, #10131400 0%, #11141500 100%);
+    border-radius: 14px;
+    margin-bottom: 22px;
+    background: #0e1112;
+  }
+  .filter {
+    background: #161a1b;
+    border: 1px solid #1f2425;
+    border-radius: 999px;
+    padding: 8px 14px;
+    color: #c8cccc;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .filter .arrow { color: #6e7575; font-size: 11px; }
+  .filter.muted { color: #8b9090; }
+  .filters .spacer { flex: 1; }
+  .filter.search {
+    background: #161a1b; padding: 0 14px 0 14px;
+  }
+  .filter.search input {
+    background: transparent; border: 0; color: #fff; outline: none; font-size: 13px;
+    padding: 8px 0; width: 200px;
+  }
+
+  /* ---------- LIST ---------- */
+  .list-head {
+    display: grid;
+    grid-template-columns: 2.4fr 1fr 1fr 1.4fr 1.2fr 1.2fr 60px;
+    gap: 16px;
+    padding: 0 22px 12px;
+    color: #6e7575;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .row {
+    display: grid;
+    grid-template-columns: 2.4fr 1fr 1fr 1.4fr 1.2fr 1.2fr 60px;
+    gap: 16px;
+    padding: 18px 22px;
+    background: #11151600;
+    background: linear-gradient(180deg, #11151600 0%, #11151600 100%);
+    border: 1px solid #1a1f20;
+    background: #0f1213;
+    border-radius: 14px;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .row:hover { border-color: #2a3033; background: #131718; }
+  .row.held { border-color: #2a3a36; background: linear-gradient(180deg, #0f1413 0%, #0f1213 100%); }
+  .row.held .position-pill { background: rgba(45, 212, 173, 0.1); color: #4cdfa0; border-color: rgba(45, 212, 173, 0.25); }
+
+  .asset {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .asset-icon {
+    width: 36px; height: 36px; border-radius: 999px;
+    background: linear-gradient(135deg, #2b8af3, #4baef0);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 13px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .asset-icon.usdc { background: linear-gradient(135deg, #2775ca, #4f9bdc); }
+  .asset-icon.weth { background: linear-gradient(135deg, #627eea, #8aa1ee); }
+  .asset-icon.wsteth { background: linear-gradient(135deg, #00a3ff, #4dc5ff); }
+  .asset-icon.usde { background: linear-gradient(135deg, #1f2937, #4b5563); border: 1px solid #6b7280; }
+  .asset-icon.btc { background: linear-gradient(135deg, #f7931a, #ffb35a); }
+  .asset-icon.tbill { background: linear-gradient(135deg, #4b3a93, #7c5fcc); }
+  .asset-meta .name { font-size: 15px; color: #fff; font-weight: 500; margin-bottom: 3px; }
+  .asset-meta .sub { color: #6e7575; font-size: 12px; }
+
+  .apy { font-size: 20px; font-weight: 600; color: #4cdfa0; letter-spacing: -0.01em; }
+  .apy small { font-size: 12px; color: #6e7575; font-weight: 400; display: block; margin-top: 2px; }
+  .apy.muted { color: #c8cccc; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: #1a1f20;
+    border: 1px solid #232a2c;
+    color: #c8cccc;
+    width: fit-content;
+  }
+  .badge.passive { color: #9ec5fe; background: rgba(105, 158, 254, 0.08); border-color: rgba(105, 158, 254, 0.2); }
+  .badge.lev { color: #ffd28b; background: rgba(255, 184, 90, 0.08); border-color: rgba(255, 184, 90, 0.2); }
+  .badge.lev-high { color: #ff9b6b; background: rgba(255, 122, 79, 0.08); border-color: rgba(255, 122, 79, 0.22); }
+  .badge.rwa { color: #d6b4ff; background: rgba(180, 130, 255, 0.08); border-color: rgba(180, 130, 255, 0.22); }
+  .badge.delayed { color: #b8d8d8; background: rgba(120, 168, 168, 0.08); border-color: rgba(120, 168, 168, 0.22); }
+  .badge.kyc { color: #ff9eb3; background: rgba(255, 105, 140, 0.08); border-color: rgba(255, 105, 140, 0.22); margin-left: 6px; }
+
+  .capacity { color: #c8cccc; font-size: 14px; }
+  .capacity small { color: #6e7575; display: block; font-size: 12px; margin-top: 2px; }
+
+  .curator {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .curator-icon { width: 24px; height: 24px; border-radius: 6px; background: #2a2f30; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #c8cccc; font-weight: 600; }
+  .curator-name { font-size: 13px; color: #c8cccc; }
+  .curator-name small { display: block; color: #6e7575; font-size: 11px; margin-top: 2px; }
+
+  .position-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: #14181a; border: 1px solid #1f2425;
+    color: #6e7575; font-size: 12px;
+    width: fit-content;
+  }
+  .position-pill .dot { width: 6px; height: 6px; border-radius: 999px; background: #2a3033; }
+  .position-pill.held .dot { background: #4cdfa0; box-shadow: 0 0 6px rgba(76, 223, 160, 0.6); }
+
+  .arrow-cell {
+    display: flex; justify-content: flex-end;
+    color: #4a5050; font-size: 18px;
+  }
+  .row:hover .arrow-cell { color: #c8cccc; }
+
+  /* ---------- DEMO LEGEND ---------- */
+  .legend {
+    margin-top: 36px;
+    padding: 18px 22px;
+    background: #0e1112;
+    border: 1px dashed #232a2c;
+    border-radius: 14px;
+    color: #8b9090;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .legend strong { color: #c8cccc; }
+  .legend code { background: #1a1f20; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #ffb88a; }
+</style>
+</head>
+<body>
+
+<!-- ============= NAV ============= -->
+<div class="nav">
+  <div class="logo">
+    <span class="logo-mark"></span>
+    <span>Gearbox</span>
+  </div>
+  <div class="nav-items">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item active">Strategies</div>
+    <div class="nav-item">Positions</div>
+    <div class="nav-item">History</div>
+  </div>
+  <div class="nav-right">
+    <div class="wallet">0x42cc…53d7</div>
+    <div class="icon-btn">···</div>
+  </div>
+</div>
+
+<!-- ============= PAGE ============= -->
+<div class="page">
+
+  <div class="page-head">
+    <div>
+      <div class="page-title">Strategies</div>
+      <div class="page-sub">Pick where your capital earns. One list — passive, leveraged, RWA, all together.</div>
+    </div>
+    <div class="seg">
+      <button class="on">All strategies</button>
+      <button>My positions (2)</button>
+    </div>
+  </div>
+
+  <!-- ============= FILTERS ============= -->
+  <div class="filters">
+    <div class="filter">Chain: Ethereum <span class="arrow">▾</span></div>
+    <div class="filter">Asset: Any <span class="arrow">▾</span></div>
+    <div class="filter">Access: Permissionless <span class="arrow">▾</span></div>
+    <div class="filter">Risk: Any <span class="arrow">▾</span></div>
+    <div class="filter">Min APY: 0% <span class="arrow">▾</span></div>
+    <div class="spacer"></div>
+    <div class="filter search">
+      <span style="color:#6e7575;">⌕</span>
+      <input placeholder="Search strategies…">
+    </div>
+    <div class="filter">Sort: APY ↓ <span class="arrow">▾</span></div>
+  </div>
+
+  <!-- ============= LIST HEADER ============= -->
+  <div class="list-head">
+    <div>Strategy</div>
+    <div>Net APY</div>
+    <div>Risk</div>
+    <div>Capacity</div>
+    <div>Curator</div>
+    <div>Your position</div>
+    <div></div>
+  </div>
+
+  <!-- ============= LIST ============= -->
+  <div class="list">
+
+    <!-- 1. ETH+ Leveraged -->
+    <div class="row held">
+      <div class="asset">
+        <div class="asset-icon weth">Ξ</div>
+        <div class="asset-meta">
+          <div class="name">ETH+ Leveraged Farming</div>
+          <div class="sub">WETH → ETH+ on Convex · v3</div>
+        </div>
+      </div>
+      <div class="apy">23.4%<small>after all costs</small></div>
+      <div><span class="badge lev-high">Leveraged up to 9×</span></div>
+      <div class="capacity">$4.2M room<small>headroom for 1 round</small></div>
+      <div class="curator">
+        <div class="curator-icon">C</div>
+        <div class="curator-name">Chaos Labs<small>0 bad debt</small></div>
+      </div>
+      <div><span class="position-pill held"><span class="dot"></span>$24,532 · HF 1.42</span></div>
+      <div class="arrow-cell">›</div>
+    </div>
+
+    <!-- 2. USDe Carry -->
+    <div class="row">
+      <div class="asset">
+        <div class="asset-icon usde">U</div>
+        <div class="asset-meta">
+          <div class="name">USDe Stablecoin Carry</div>
+          <div class="sub">USDC → sUSDe loop · v3</div>
+        </div>
+      </div>
+      <div class="apy">14.8%<small>after all costs</small></div>
+      <div><span class="badge lev">Leveraged up to 5×</span></div>
+      <div class="capacity">$8.1M room<small>large headroom</small></div>
+      <div class="curator">
+        <div class="curator-icon">C</div>
+        <div class="curator-name">Chaos Labs<small>0 bad debt</small></div>
+      </div>
+      <div><span class="position-pill"><span class="dot"></span>Not held</span></div>
+      <div class="arrow-cell">›</div>
+    </div>
+
+    <!-- 3. Securitize T-Bill -->
+    <div class="row">
+      <div class="asset">
+        <div class="asset-icon tbill">T</div>
+        <div class="asset-meta">
+          <div class="name">Tokenised T-Bill Leveraged</div>
+          <div class="sub">USDC → BUIDL via Securitize · v3</div>
+        </div>
+      </div>
+      <div class="apy">9.2%<small>after all costs</small></div>
+      <div>
+        <span class="badge rwa">RWA · Leveraged 3×</span>
+        <span class="badge kyc">KYC</span>
+      </div>
+      <div class="capacity">$1.5M room<small>limited issue size</small></div>
+      <div class="curator">
+        <div class="curator-icon">S</div>
+        <div class="curator-name">Steakhouse FI<small>0 bad debt</small></div>
+      </div>
+      <div><span class="position-pill"><span class="dot"></span>Not held</span></div>
+      <div class="arrow-cell">›</div>
+    </div>
+
+    <!-- 4. weETH Restaking -->
+    <div class="row">
+      <div class="asset">
+        <div class="asset-icon wsteth">w</div>
+        <div class="asset-meta">
+          <div class="name">weETH Restaking Loop</div>
+          <div class="sub">WETH → weETH leveraged · v3</div>
+        </div>
+      </div>
+      <div class="apy">18.6%<small>after all costs</small></div>
+      <div><span class="badge lev">Leveraged up to 7×</span></div>
+      <div class="capacity">$2.8M room<small>headroom for 1 round</small></div>
+      <div class="curator">
+        <div class="curator-icon">G</div>
+        <div class="curator-name">Gauntlet<small>0 bad debt</small></div>
+      </div>
+      <div><span class="position-pill"><span class="dot"></span>Not held</span></div>
+      <div class="arrow-cell">›</div>
+    </div>
+
+    <!-- 5. USDC curated lending -->
+    <div class="row">
+      <div class="asset">
+        <div class="asset-icon usdc">$</div>
+        <div class="asset-meta">
+          <div class="name">USDC Curated Lending</div>
+          <div class="sub">Passive supply · v3 pool</div>
+        </div>
+      </div>
+      <div class="apy">8.2%<small>after all costs</small></div>
+      <div><span class="badge passive">Passive</span></div>
+      <div class="capacity">$12M room<small>util 64%</small></div>
+      <div class="curator">
+        <div class="curator-icon">C</div>
+        <div class="curator-name">Chaos Labs<small>0 bad debt</small></div>
+      </div>
+      <div><span class="position-pill"><span class="dot"></span>Not held</span></div>
+      <div class="arrow-cell">›</div>
+    </div>
+
+    <!-- 6. kpk wstETH -->
+    <div class="row held">
+      <div class="asset">
+        <div class="asset-icon wsteth">w</div>
+        <div class="asset-meta">
+          <div class="name">kpk wstETH Lending</div>
+          <div class="sub">Passive supply · v3 pool</div>
+        </div>
+      </div>
+      <div class="apy muted">2.55%<small>after all costs</small></div>
+      <div><span class="badge passive">Passive</span></div>
+      <div class="capacity">2.1K wstETH room<small>util 42%</small></div>
+      <div class="curator">
+        <div class="curator-icon">k</div>
+        <div class="curator-name">kpk<small>6 audits · 0 bad debt</small></div>
+      </div>
+      <div><span class="position-pill held"><span class="dot"></span>0.5 wstETH · safe</span></div>
+      <div class="arrow-cell">›</div>
+    </div>
+
+    <!-- 7. Midas mTBILL leveraged -->
+    <div class="row">
+      <div class="asset">
+        <div class="asset-icon tbill">m</div>
+        <div class="asset-meta">
+          <div class="name">Midas mTBILL Carry</div>
+          <div class="sub">USDC → mTBILL · v3</div>
+        </div>
+      </div>
+      <div class="apy">7.1%<small>after all costs</small></div>
+      <div>
+        <span class="badge rwa">RWA · Leveraged 2×</span>
+        <span class="badge delayed">Delayed exit</span>
+      </div>
+      <div class="capacity">$3.4M room<small>5d redemption</small></div>
+      <div class="curator">
+        <div class="curator-icon">M</div>
+        <div class="curator-name">MEV Capital<small>0 bad debt</small></div>
+      </div>
+      <div><span class="position-pill"><span class="dot"></span>Not held</span></div>
+      <div class="arrow-cell">›</div>
+    </div>
+
+  </div>
+
+  <!-- ============= LEGEND / NOTES ============= -->
+  <div class="legend">
+    <strong>Sketch notes (not a final design).</strong> &nbsp;
+    The card contract here is exactly <code>§2.2</code> of <code>gearbox-unified-strategy-flow.md</code>: asset · headline name · single net APY · risk badge · capacity (normalised across mechanisms) · curator · position indicator. Mechanism (pool vs CA) never appears as a column or filter — it lives only inside the strategy detail. Held strategies surface a green pill with equity + safety verdict; unheld show a neutral "Not held" pill. Risk badges are the four-tier taxonomy (Passive · Leveraged Nx · RWA · Delayed-withdrawal) plus a separate KYC badge that composes when access is gated.
+  </div>
+
+</div>
+
+</body>
+</html>

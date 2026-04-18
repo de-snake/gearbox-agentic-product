@@ -24,6 +24,7 @@ discover → analyze → propose → preview → execute → monitor
 ## Intent (Pre-loop)
 
 The agent knows its role before entering the loop:
+
 - **LP agent** — passive yield on a single token, deposits into pools
 - **CA agent** — leveraged strategy, opens credit accounts with collateral
 
@@ -50,6 +51,7 @@ interface AgentTask{
 **When:** LP agent has capital in a single token, wants to find pools to deposit into.
 
 **Agent calls:**
+
 ```typescript
 list_pools({
    assets: "BTC" | "ETH" | "USD",
@@ -57,6 +59,7 @@ list_pools({
 ```
 
 **API returns:**
+
 ```typescript
 interface PoolListItem {
   pool_address: string             // SDK   
@@ -78,6 +81,7 @@ interface PoolListItem {
 **When:** CA agent has a market thesis (e.g. "long stETH vs ETH") and wants to find strategies that match.
 
 **Agent calls:**
+
 ```typescript
 list_strategies({
   collateral_token?: string,  // target asset agent wants to hold (e.g. "stETH")
@@ -89,6 +93,7 @@ list_strategies({
 ```
 
 **API returns:**
+
 ```typescript
 interface StrategyListItem {
   cm_address: string
@@ -106,10 +111,10 @@ interface StrategyListItem {
 ```
 
 // Additional data: zeroSlippage, withdrawal time, points,..
-// asset properties: KYC (?) | /assets 
+// asset properties: KYC (?) | /assets
 // key strategies: KYC - degen NFT
 // DegenNFT - minter(?)
-// **degenNFT().minter().description()** - 
+// **degenNFT().minter().description()** -
 // KYC: `url:string`
 
 **Agent logic:** Filter by collateral match → skip if borrowable = 0 → skip if position size outside min/max → skip if net APY < 0 → shortlist 1–3 → proceed to Analyze.
@@ -125,8 +130,10 @@ interface StrategyListItem {
 > **Agent:** calls detail tools for each shortlisted candidate, gets structured risk/reward data, makes a go/no-go decision.
 
 ### Tool: "get_curator"
+
 get_curator({market}) -> CuratorData
 Backend
+
 ```typescript
 curator: {
     address: string,
@@ -142,6 +149,7 @@ curator: {
 **When:** LP agent runs deep DD on a shortlisted pool.
 
 **Agent calls:**
+
 ```typescript
 get_pool_detail({
   pool_address: string,
@@ -149,7 +157,6 @@ get_pool_detail({
   include_events?: boolean,    // request parameter change log (default true)
 })
 ```
-
 
 // LP DECISION MAKING
 // Profits:
@@ -171,6 +178,7 @@ get_pool_detail({
 // EMERGENCY STATE: pause, forbidden tokens, etc.
 
 **API returns:**
+
 ```typescript
 interface PoolDetail {
   // --- Identity ---
@@ -261,6 +269,7 @@ interface PoolDetail {
 ```
 
 **Agent logic:**
+
 1. **Yield check** — organic rate alone meets floor? If incentive-dependent, treat as risky. Check 90d trend for decay.
 2. **Exposure chain** — trace pool → CMs → tokens. Flag: exotic tokens, single-CM concentration, paused CMs with significant borrowed amounts.
 3. **Exit feasibility** — utilization < 90%? Trend stable? IRM slope above U2 steep enough to force borrower repayment?
@@ -283,7 +292,7 @@ interface PoolDetail {
 // - APY, incentives
 // - Price impact now, futured PI
 // - basic params (ltv)
-// 
+//
 //
 // RISK
 // - Oracle type, staleness
@@ -298,7 +307,6 @@ interface PoolDetail {
 // FUTURE STATE CHANGES
 // EMERGENCY
 
-
 ```typescript
 get_strategy_detail({
   cm_address: string, 
@@ -309,6 +317,7 @@ get_strategy_detail({
 ```
 
 **API returns:**
+
 ```typescript
 interface StrategyDetail {
   // --- Identity ---
@@ -387,6 +396,7 @@ interface StrategyDetail {
 ```
 
 **Agent logic:**
+
 1. **Economics** — compute net APY at target leverage. Check: is borrow rate > collateral yield? Is quota rate eating the spread? Model cost at +10% utilization using IRM.
 2. **Collateral safety** — check LT ramp schedules. Compare oracle type vs token market structure. Check main/reserve price divergence history. Flag stale oracles.
 3. **Exit feasibility** — price impact at position size < 2%? Borrowable > 0 for future leverage adjustments? Min/max debt allow iterative unwind?
@@ -406,6 +416,7 @@ interface StrategyDetail {
 **When:** LP agent has decided to enter a pool, needs to formulate deposit parameters.
 
 **Agent calls:**
+
 ```typescript
 prepare_deposit({
   pool_address: string,
@@ -414,6 +425,7 @@ prepare_deposit({
 ```
 
 **API returns:**
+
 ```typescript
 interface DepositProposal {
   pool_address: string
@@ -438,6 +450,7 @@ interface DepositProposal {
 **When:** CA agent has decided to open a leveraged position, needs to formulate exact parameters.
 
 **Agent calls:**
+
 ```typescript
 prepare_position({
   cm_address: string,
@@ -448,6 +461,7 @@ prepare_position({
 ```
 
 **API returns:**
+
 ```typescript
 interface PositionProposal {
   cm_address: string
@@ -484,6 +498,7 @@ interface PositionProposal {
 ### Tool: `simulate_deposit` (LP)
 
 **Agent calls:**
+
 ```typescript
 simulate_deposit({
   pool_address: string,
@@ -493,6 +508,7 @@ simulate_deposit({
 ```
 
 **API returns:**
+
 ```typescript
 interface DepositSimulation {
   success: boolean
@@ -512,6 +528,7 @@ interface DepositSimulation {
 ### Tool: `simulate_position` (CA)
 
 **Agent calls:**
+
 ```typescript
 simulate_position({
   cm_address: string,
@@ -523,6 +540,7 @@ simulate_position({
 ```
 
 **API returns:**
+
 ```typescript
 interface PositionSimulation {
   success: boolean
@@ -560,6 +578,7 @@ interface PositionSimulation {
 ### Tool: `execute_transaction`
 
 **Agent calls:**
+
 ```typescript
 execute_transaction({
   calldata: string,          // from Preview simulation
@@ -568,6 +587,7 @@ execute_transaction({
 ```
 
 **API returns:**
+
 ```typescript
 interface TransactionResult {
   tx_hash: string
@@ -593,6 +613,7 @@ After execution, the agent reads the actual result using the Monitor tools (belo
 **When:** LP agent periodically checks its pool position.
 
 **Agent calls:**
+
 ```typescript
 get_pool_status({
   pool_address: string,
@@ -602,6 +623,7 @@ get_pool_status({
 ```
 
 **API returns:**
+
 ```typescript
 interface PoolStatus {
   // --- Yield tracking ---
@@ -654,6 +676,7 @@ interface PoolStatus {
 ```
 
 **Agent logic — trigger re-entry:**
+
 | Condition                        | Action                                 |
 | -------------------------------- | -------------------------------------- |
 | APY drops below agent's floor    | → **Propose** exit (withdraw)          |
@@ -670,6 +693,7 @@ interface PoolStatus {
 **When:** CA agent periodically checks its leveraged position.
 
 **Agent calls:**
+
 ```typescript
 get_position_status({
   credit_account: string,
@@ -679,6 +703,7 @@ get_position_status({
 ```
 
 **API returns:**
+
 ```typescript
 interface PositionStatus {
   credit_account: string
@@ -749,6 +774,7 @@ interface PositionStatus {
 ```
 
 **Agent logic — trigger re-entry:**
+
 | Condition                              | Action                                               |
 | -------------------------------------- | ---------------------------------------------------- |
 | HF approaching threshold (e.g. < 1.3)  | → **Propose** deleverage or add collateral           |

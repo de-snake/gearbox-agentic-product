@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gearbox · Strategy detail (unified Position template)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #0a0c0c;
+    color: #e8eaea;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- NAV ---------- */
+  .nav {
+    display: flex; align-items: center;
+    padding: 18px 32px; border-bottom: 1px solid #15191a;
+    background: #0a0c0c; position: sticky; top: 0; z-index: 10;
+  }
+  .logo { font-weight: 600; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, #ff8a3a 0%, #ff3a6e 100%);
+    border-radius: 6px;
+  }
+  .nav-items { display: flex; gap: 36px; margin: 0 auto; }
+  .nav-item { color: #6e7575; cursor: pointer; font-size: 15px; padding: 22px 0; position: relative; }
+  .nav-item.active { color: #fff; }
+  .nav-item.active::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+    background: #e91e63;
+  }
+  .nav-right { display: flex; gap: 12px; align-items: center; }
+  .wallet {
+    background: #161a1b; border: 1px solid #1f2425;
+    padding: 8px 16px; border-radius: 999px;
+    font-family: ui-monospace, monospace; font-size: 13px; color: #c8cccc;
+  }
+  .icon-btn {
+    width: 36px; height: 36px; background: #161a1b; border: 1px solid #1f2425;
+    border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    color: #888; cursor: pointer;
+  }
+
+  /* ---------- PAGE ---------- */
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 80px; }
+
+  /* Breadcrumb */
+  .crumbs { color: #6e7575; font-size: 13px; margin-bottom: 20px; }
+  .crumbs a { color: #8b9090; text-decoration: none; }
+  .crumbs a:hover { color: #c8cccc; }
+
+  /* Strategy header */
+  .strategy-head {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+  }
+  .strategy-icon {
+    width: 48px; height: 48px; border-radius: 999px;
+    background: linear-gradient(135deg, #627eea, #8aa1ee);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .strategy-head h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; display: flex; align-items: center; gap: 12px; }
+  .strategy-head .sub { color: #6e7575; font-size: 13px; margin-top: 4px; display: flex; align-items: center; gap: 10px; }
+  .strategy-head .chip {
+    background: #161a1b; border: 1px solid #1f2425;
+    border-radius: 999px; padding: 3px 10px; font-size: 12px; color: #c8cccc;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 12px;
+    background: #1a1f20; border: 1px solid #232a2c; color: #c8cccc;
+  }
+  .badge.lev-high { color: #ff9b6b; background: rgba(255, 122, 79, 0.08); border-color: rgba(255, 122, 79, 0.22); }
+
+  /* ---------- LAYOUT: 75 / 25 ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+
+  /* ---------- KPI STRIP (sticky across 75%) ---------- */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .kpi {
+    background: #0f1213; border: 1px solid #1a1f20;
+    border-radius: 14px; padding: 18px 20px;
+  }
+  .kpi .label { color: #6e7575; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .kpi .value { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .kpi .sub { color: #8b9090; font-size: 12px; margin-top: 6px; }
+  .kpi.green .value { color: #4cdfa0; }
+  .kpi.dot::before {
+    content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 999px;
+    background: #4cdfa0; margin-right: 8px; transform: translateY(-2px);
+    box-shadow: 0 0 8px rgba(76, 223, 160, 0.5);
+  }
+  .kpi.dot.yellow::before { background: #ffb85a; box-shadow: 0 0 8px rgba(255, 184, 90, 0.4); }
+  .kpi.dot.red::before { background: #ff6b6b; box-shadow: 0 0 8px rgba(255, 107, 107, 0.4); }
+
+  /* ---------- CARDS ---------- */
+  .card {
+    background: #0f1213; border: 1px solid #1a1f20;
+    border-radius: 14px; padding: 22px 24px; margin-bottom: 14px;
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 13px; color: #6e7575; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+  .card h3 { font-size: 16px; color: #fff; font-weight: 500; margin-bottom: 6px; }
+
+  /* ---------- GLANCE ---------- */
+  .glance { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+  .glance-item {
+    background: #0f1213; border: 1px solid #1a1f20;
+    border-radius: 14px; padding: 20px 22px;
+    position: relative;
+  }
+  .glance-item .q {
+    color: #6e7575; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+  .glance-item .verdict {
+    font-size: 18px; font-weight: 600; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .glance-item .verdict .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .glance-item.safe .verdict { color: #4cdfa0; }
+  .glance-item.safe .dot { background: #4cdfa0; box-shadow: 0 0 8px rgba(76, 223, 160, 0.5); }
+  .glance-item.caution .verdict { color: #ffb85a; }
+  .glance-item.caution .dot { background: #ffb85a; }
+  .glance-item .line { color: #c8cccc; font-size: 13px; line-height: 1.55; margin-bottom: 6px; }
+  .glance-item .raw { color: #6e7575; font-size: 12px; font-family: ui-monospace, monospace; }
+
+  /* Spark line */
+  .spark { height: 32px; margin-top: 10px; margin-bottom: 8px; }
+  .spark svg { width: 100%; height: 100%; display: block; }
+
+  /* Delta feed */
+  .delta { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .delta-row { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: #c8cccc; }
+  .delta-row .when { color: #6e7575; font-size: 11px; }
+  .delta-row .pill {
+    padding: 3px 8px; border-radius: 6px; font-size: 11px;
+    background: #1a1f20; border: 1px solid #232a2c; color: #c8cccc;
+  }
+  .delta-row .pill.down { background: rgba(255, 107, 107, 0.08); border-color: rgba(255, 107, 107, 0.22); color: #ff9b9b; }
+  .delta-row .pill.up { background: rgba(76, 223, 160, 0.08); border-color: rgba(76, 223, 160, 0.22); color: #4cdfa0; }
+
+  /* ---------- ANALYZE ACCORDIONS ---------- */
+  .section {
+    background: #0f1213; border: 1px solid #1a1f20;
+    border-radius: 14px; margin-bottom: 12px;
+  }
+  .section-head {
+    padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+  }
+  .section-head .left { display: flex; align-items: center; gap: 14px; }
+  .section-head .chev { color: #6e7575; font-size: 14px; }
+  .section-title { font-size: 14px; font-weight: 500; color: #e8eaea; }
+  .section-body { padding: 0 24px 22px; border-top: 1px solid #15191a; padding-top: 18px; }
+
+  /* Yield decomposition table */
+  .yield-table { display: grid; grid-template-columns: 1fr auto auto; gap: 8px 18px; font-size: 13px; }
+  .yield-table .h { color: #6e7575; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; padding-bottom: 6px; border-bottom: 1px solid #1a1f20; margin-bottom: 6px; }
+  .yield-table .src { color: #c8cccc; display: flex; align-items: center; gap: 10px; }
+  .yield-table .src .sw { width: 10px; height: 10px; border-radius: 3px; background: #4cdfa0; }
+  .yield-table .src .sw.inc { background: #7a9cff; }
+  .yield-table .src .sw.cost { background: #ff9b6b; }
+  .yield-table .val { text-align: right; color: #e8eaea; }
+  .yield-table .val.neg { color: #ff9b9b; }
+  .yield-table .total { font-weight: 600; color: #4cdfa0; border-top: 1px solid #1a1f20; padding-top: 10px; margin-top: 4px; }
+
+  /* Exposure chain as tree */
+  .tree { font-size: 13px; color: #c8cccc; }
+  .tree-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .tree-row.indent-1 { padding-left: 22px; }
+  .tree-row.indent-2 { padding-left: 44px; }
+  .tree-row .tag { background: #1a1f20; border: 1px solid #232a2c; border-radius: 4px; padding: 2px 6px; font-size: 11px; color: #8b9090; margin-left: 8px; }
+  .tree-row .val { color: #6e7575; margin-left: auto; font-size: 12px; }
+
+  /* Curator / change log */
+  .change-log { display: flex; flex-direction: column; gap: 10px; }
+  .change-row { display: flex; align-items: flex-start; gap: 14px; font-size: 13px; padding: 10px 0; border-bottom: 1px solid #14181a; }
+  .change-row:last-child { border-bottom: 0; }
+  .change-row .when { color: #6e7575; font-size: 12px; width: 70px; flex-shrink: 0; }
+  .change-row .what { color: #c8cccc; flex: 1; }
+  .change-row .what strong { color: #fff; font-weight: 500; }
+  .change-row .pill {
+    padding: 3px 8px; border-radius: 6px; font-size: 11px;
+    background: #1a1f20; border: 1px solid #232a2c; color: #c8cccc;
+  }
+  .change-row.pending { background: linear-gradient(90deg, rgba(255, 184, 90, 0.05), transparent); margin: 0 -14px; padding: 10px 14px; border-radius: 8px; border-bottom: 0; }
+  .change-row.pending .pill { background: rgba(255, 184, 90, 0.1); border-color: rgba(255, 184, 90, 0.25); color: #ffb85a; }
+
+  /* Exit card */
+  .exit-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .exit-cell .lab { color: #6e7575; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .exit-cell .val { color: #fff; font-size: 16px; font-weight: 500; }
+  .exit-cell .sub { color: #8b9090; font-size: 12px; margin-top: 4px; }
+
+  /* ---------- MANAGE PANEL (right 25%) ---------- */
+  .manage {
+    background: #0f1213; border: 1px solid #1a1f20;
+    border-radius: 14px;
+    position: sticky; top: 90px;
+    padding: 22px;
+  }
+  .manage h2 { font-size: 18px; font-weight: 500; margin-bottom: 16px; color: #fff; text-transform: none; letter-spacing: 0; }
+  .tabs {
+    display: grid; grid-template-columns: 1fr 1fr; background: #14181a; padding: 4px;
+    border-radius: 10px; margin-bottom: 18px;
+  }
+  .tab {
+    padding: 8px 0; text-align: center; color: #8b9090; font-size: 13px; cursor: pointer;
+    border-radius: 7px; border: 0; background: transparent; font-family: inherit;
+  }
+  .tab.on { background: #1d2326; color: #fff; }
+
+  .input-card {
+    background: #14181a; border: 1px solid #1f2425;
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .input-card .lab-row { display: flex; justify-content: space-between; font-size: 12px; color: #8b9090; margin-bottom: 8px; }
+  .input-card .lab-row .max {
+    background: #1a1f20; border: 1px solid #232a2c; color: #c8cccc;
+    padding: 2px 7px; border-radius: 6px; font-size: 10px; cursor: pointer;
+  }
+  .input-row { display: flex; align-items: center; justify-content: space-between; }
+  .input-row input {
+    background: transparent; border: 0; color: #fff;
+    font-size: 24px; font-weight: 500; outline: none; width: 70%;
+    font-family: inherit;
+  }
+  .token-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: #1a1f20; border: 1px solid #232a2c;
+    padding: 5px 10px 5px 6px; border-radius: 999px; color: #c8cccc; font-size: 13px;
+  }
+  .token-pill .dot-t { width: 20px; height: 20px; border-radius: 999px; background: linear-gradient(135deg, #627eea, #8aa1ee); }
+
+  /* Leverage slider */
+  .lev {
+    background: #14181a; border: 1px solid #1f2425;
+    border-radius: 12px; padding: 16px; margin-bottom: 14px;
+  }
+  .lev-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .lev-head .lab { color: #8b9090; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .lev-head .cur {
+    font-size: 22px; font-weight: 600; color: #ff9b6b; letter-spacing: -0.01em;
+  }
+  .slider-wrap { position: relative; padding: 6px 0 16px; }
+  .slider-track {
+    height: 4px; background: #1f2425; border-radius: 999px; position: relative;
+  }
+  .slider-fill {
+    position: absolute; top: 0; left: 0; height: 100%;
+    background: linear-gradient(90deg, #4cdfa0 0%, #ffb85a 55%, #ff6b6b 100%);
+    border-radius: 999px; width: 58%;
+  }
+  .slider-thumb {
+    position: absolute; top: 50%; left: 58%; transform: translate(-50%, -50%);
+    width: 18px; height: 18px; border-radius: 999px;
+    background: #fff; border: 3px solid #0f1213;
+    box-shadow: 0 0 0 1px #ff9b6b;
+  }
+  .slider-ticks { display: flex; justify-content: space-between; color: #6e7575; font-size: 11px; margin-top: 12px; }
+  .lev-warn { font-size: 12px; color: #ffb85a; margin-top: 4px; }
+
+  /* Before / after */
+  .ba-label { font-size: 12px; color: #6e7575; text-transform: uppercase; letter-spacing: 0.06em; margin: 6px 0 10px; }
+  .ba {
+    background: #14181a; border: 1px solid #1f2425;
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .ba-row {
+    display: grid; grid-template-columns: 1.2fr 1fr 16px 1fr;
+    gap: 10px; align-items: center; padding: 8px 0;
+    font-size: 13px;
+    border-bottom: 1px solid #1a1f20;
+  }
+  .ba-row:last-child { border-bottom: 0; }
+  .ba-row .lab { color: #8b9090; font-size: 12px; }
+  .ba-row .from { color: #c8cccc; text-align: right; }
+  .ba-row .arrow { color: #4a5050; text-align: center; font-size: 11px; }
+  .ba-row .to { color: #fff; font-weight: 500; text-align: right; }
+  .ba-row .to.neg { color: #ffb85a; }
+  .ba-row .to.pos { color: #4cdfa0; }
+
+  /* CTA */
+  .cta {
+    width: 100%; padding: 14px 0; border: 0; border-radius: 12px;
+    background: #e91e63;
+    color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    font-family: inherit;
+  }
+  .cta:hover { background: #f3336d; }
+  .cta.ghost { background: #14181a; border: 1px solid #1f2425; color: #c8cccc; font-weight: 500; margin-top: 8px; }
+
+  /* Meta below CTA */
+  .meta-rows { margin-top: 16px; font-size: 12.5px; display: flex; flex-direction: column; gap: 8px; }
+  .meta-rows .mr { display: flex; justify-content: space-between; color: #8b9090; }
+  .meta-rows .mr .v { color: #c8cccc; }
+
+  /* Act CTAs row in left column */
+  .act-row {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+  }
+  .act-row .act {
+    background: #14181a; border: 1px solid #1f2425; color: #c8cccc;
+    padding: 10px 16px; border-radius: 10px; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .act-row .act:hover { border-color: #2a3033; background: #171c1e; }
+  .act-row .act .v {
+    font-family: ui-monospace, monospace; font-size: 12px; background: #1a1f20;
+    border: 1px solid #232a2c; padding: 1px 6px; border-radius: 4px; color: #8b9090;
+  }
+
+  .legend {
+    margin-top: 22px; padding: 16px 20px;
+    background: #0e1112; border: 1px dashed #232a2c; border-radius: 12px;
+    color: #8b9090; font-size: 12.5px; line-height: 1.6;
+  }
+  .legend strong { color: #c8cccc; }
+  .legend code { background: #1a1f20; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #ffb88a; }
+</style>
+</head>
+<body>
+
+<!-- ============= NAV ============= -->
+<div class="nav">
+  <div class="logo"><span class="logo-mark"></span><span>Gearbox</span></div>
+  <div class="nav-items">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item active">Strategies</div>
+    <div class="nav-item">Positions</div>
+    <div class="nav-item">History</div>
+  </div>
+  <div class="nav-right">
+    <div class="wallet">0x42cc…53d7</div>
+    <div class="icon-btn">···</div>
+  </div>
+</div>
+
+<!-- ============= PAGE ============= -->
+<div class="page">
+
+  <div class="crumbs"><a href="#">Strategies</a> &nbsp;›&nbsp; ETH+ Leveraged Farming</div>
+
+  <!-- ============= STRATEGY HEADER ============= -->
+  <div class="strategy-head">
+    <div class="strategy-icon">Ξ</div>
+    <div>
+      <h1>
+        ETH+ Leveraged Farming
+        <span class="badge lev-high">Leveraged up to 9×</span>
+      </h1>
+      <div class="sub">
+        <span class="chip">Ethereum</span>
+        <span class="chip">Deposit asset: WETH</span>
+        <span class="chip">Curator: Chaos Labs</span>
+        <span class="chip">Permissionless</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= GRID 75/25 ============= -->
+  <div class="grid">
+
+    <!-- ====== LEFT (info ~75%) ====== -->
+    <div class="left">
+
+      <!-- Sticky KPI strip -->
+      <div class="kpis">
+        <div class="kpi">
+          <div class="label">Equity</div>
+          <div class="value">9.81 WETH</div>
+          <div class="sub">≈ $24,532</div>
+        </div>
+        <div class="kpi green">
+          <div class="label">Net APY (after costs)</div>
+          <div class="value">23.4%</div>
+          <div class="sub">on equity · 30d avg</div>
+        </div>
+        <div class="kpi dot">
+          <div class="label">Safety</div>
+          <div class="value" style="color:#4cdfa0">Safe</div>
+          <div class="sub">HF 1.42 · ETH+ would need to drop 22%</div>
+        </div>
+        <div class="kpi">
+          <div class="label">P&amp;L since entry</div>
+          <div class="value" style="color:#4cdfa0">+0.62 WETH</div>
+          <div class="sub">+6.7% · 47 days</div>
+        </div>
+      </div>
+
+      <!-- Glance layer -->
+      <div class="card">
+        <div class="card-head">
+          <h2>Glance · answered in under 5 seconds</h2>
+          <span style="color:#6e7575; font-size:12px;">Priority: Safety → Returns → Drift</span>
+        </div>
+
+        <div class="glance">
+
+          <!-- Am I safe -->
+          <div class="glance-item safe">
+            <div class="q">Am I safe?</div>
+            <div class="verdict"><span class="dot"></span>Safe</div>
+            <div class="line">Liquidation if <strong>ETH+ drops ~22% vs WETH</strong>.</div>
+            <div class="line">At current borrow accrual, flat prices: liquidation in ~38 months.</div>
+            <div class="raw">HF 1.42 · LT 87% · no ramp active</div>
+          </div>
+
+          <!-- Am I making money -->
+          <div class="glance-item safe">
+            <div class="q">Am I making money?</div>
+            <div class="verdict">+0.62 WETH · +6.7%</div>
+            <div class="spark">
+              <svg viewBox="0 0 200 32" preserveAspectRatio="none">
+                <polyline fill="none" stroke="#4cdfa0" stroke-width="1.5"
+                  points="0,28 10,26 20,24 30,25 40,22 50,23 60,20 70,18 80,19 90,16 100,15 110,13 120,14 130,12 140,10 150,11 160,8 170,9 180,6 190,5 200,4" />
+                <polyline fill="rgba(76,223,160,0.08)" stroke="none"
+                  points="0,28 10,26 20,24 30,25 40,22 50,23 60,20 70,18 80,19 90,16 100,15 110,13 120,14 130,12 140,10 150,11 160,8 170,9 180,6 190,5 200,4 200,32 0,32" />
+              </svg>
+            </div>
+            <div class="raw">Net APY 23.4% after borrow (1.02%) + quota (0.3%) + fees</div>
+          </div>
+
+          <!-- Is anything drifting -->
+          <div class="glance-item caution">
+            <div class="q">Anything drifting? (7d)</div>
+            <div class="verdict"><span class="dot"></span>1 item to notice</div>
+            <div class="delta">
+              <div class="delta-row">
+                <span>ETH+ base yield</span>
+                <span class="pill down">−0.4 pp</span>
+              </div>
+              <div class="delta-row">
+                <span>Borrow rate</span>
+                <span class="pill up">+0.08 pp</span>
+              </div>
+              <div class="delta-row">
+                <span>Governance queued</span>
+                <span class="pill">1 item</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Act CTAs (outcome verbs) -->
+        <div style="margin-top: 18px;">
+          <div style="color:#6e7575; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">What you can do</div>
+          <div class="act-row">
+            <div class="act">Deposit more</div>
+            <div class="act">Withdraw</div>
+            <div class="act">Rebalance <span class="v">→ weETH 18.6%</span></div>
+            <div class="act">Claim rewards <span class="v">0.08 WETH</span></div>
+            <div class="act">Reduce risk</div>
+            <div class="act">Increase yield</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analyze: Yield decomposition -->
+      <div class="section">
+        <div class="section-head">
+          <div class="left">
+            <span class="section-title">Yield decomposition</span>
+            <span style="color:#6e7575; font-size:12px;">Where the 23.4% comes from, and what can disappear</span>
+          </div>
+          <span class="chev">▾</span>
+        </div>
+        <div class="section-body">
+          <div class="yield-table">
+            <div class="h">Source</div>
+            <div class="h" style="text-align:right;">Current</div>
+            <div class="h" style="text-align:right;">30d avg</div>
+
+            <div class="src"><span class="sw"></span>ETH+ base yield × 9×</div>
+            <div class="val">22.5%</div>
+            <div class="val">22.9%</div>
+
+            <div class="src"><span class="sw inc"></span>Merkl incentive</div>
+            <div class="val">4.1%</div>
+            <div class="val">4.0%</div>
+
+            <div class="src"><span class="sw cost"></span>Borrow cost × 8×</div>
+            <div class="val neg">−8.2%</div>
+            <div class="val neg">−8.0%</div>
+
+            <div class="src"><span class="sw cost"></span>Quota interest</div>
+            <div class="val neg">−2.4%</div>
+            <div class="val neg">−2.4%</div>
+
+            <div class="src"><span class="sw cost"></span>Entry swap (amortised)</div>
+            <div class="val neg">−0.6%</div>
+            <div class="val neg">−0.6%</div>
+
+            <div class="src total">Net APY on equity</div>
+            <div class="val total">23.4%</div>
+            <div class="val total">23.9%</div>
+          </div>
+          <div style="color:#8b9090; font-size:12px; margin-top:14px;">Breakeven at current entry cost: <strong style="color:#c8cccc;">9 days</strong> · your horizon: ≥ 30d ✓</div>
+        </div>
+      </div>
+
+      <!-- Analyze: Exposure chain -->
+      <div class="section">
+        <div class="section-head">
+          <div class="left">
+            <span class="section-title">Exposure chain</span>
+            <span style="color:#6e7575; font-size:12px;">What holds your money, and what can break</span>
+          </div>
+          <span class="chev">▾</span>
+        </div>
+        <div class="section-body">
+          <div class="tree">
+            <div class="tree-row"><strong style="color:#fff;">Credit Account</strong> <span class="tag">adapter-gated</span> <span class="val">isolated</span></div>
+            <div class="tree-row indent-1">↳ Held: <strong style="color:#c8cccc;">ETH+</strong> 87.3 tokens <span class="tag">LT 87%</span> <span class="val">$221,400</span></div>
+            <div class="tree-row indent-2">↳ Oracle: Chainlink + Redstone reserve <span class="tag">divergence 4bps</span></div>
+            <div class="tree-row indent-2">↳ Routing: Balancer, Curve, CoW <span class="tag">liquid</span></div>
+            <div class="tree-row indent-1">↳ Debt: <strong style="color:#c8cccc;">WETH</strong> 77.5 <span class="tag">quota 0.3%</span> <span class="val">$193,750</span></div>
+            <div class="tree-row indent-1">↳ Forbidden tokens overlap <span class="tag">none</span> <span class="val">ok</span></div>
+            <div class="tree-row indent-1">↳ Delayed withdrawal <span class="tag">none</span> <span class="val">instant exit</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analyze: Curator & change log -->
+      <div class="section">
+        <div class="section-head">
+          <div class="left">
+            <span class="section-title">Curator &amp; change log</span>
+            <span style="color:#6e7575; font-size:12px;">Chaos Labs · 0 cumulative bad debt · 14 pools managed</span>
+          </div>
+          <span class="chev">▾</span>
+        </div>
+        <div class="section-body">
+          <div class="change-log">
+            <div class="change-row pending">
+              <div class="when">in 36h</div>
+              <div class="what"><strong>Pending:</strong> reduce LT on ETH+ from 87% → 86%. Expected HF impact at your position: −0.02.</div>
+              <span class="pill">queued</span>
+            </div>
+            <div class="change-row">
+              <div class="when">3d ago</div>
+              <div class="what">Added Curve tricryptoUSDC adapter to CM. Does not affect your position.</div>
+              <span class="pill">info</span>
+            </div>
+            <div class="change-row">
+              <div class="when">11d ago</div>
+              <div class="what">Increased debt limit from $18M → $24M.</div>
+              <span class="pill">info</span>
+            </div>
+            <div class="change-row">
+              <div class="when">28d ago</div>
+              <div class="what">IRM slope2 from 12% → 14%. Impact at current utilisation: negligible.</div>
+              <span class="pill">info</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analyze: Exit -->
+      <div class="section">
+        <div class="section-head">
+          <div class="left">
+            <span class="section-title">Exit feasibility</span>
+            <span style="color:#6e7575; font-size:12px;">If you close today at full size</span>
+          </div>
+          <span class="chev">▾</span>
+        </div>
+        <div class="section-body">
+          <div class="exit-grid">
+            <div class="exit-cell">
+              <div class="lab">Equity returned</div>
+              <div class="val">9.74 WETH</div>
+              <div class="sub">after swap impact 72 bps</div>
+            </div>
+            <div class="exit-cell">
+              <div class="lab">Total cost</div>
+              <div class="val">0.07 WETH</div>
+              <div class="sub">swap + gas</div>
+            </div>
+            <div class="exit-cell">
+              <div class="lab">Time to settle</div>
+              <div class="val">Instant</div>
+              <div class="sub">no delayed withdrawals</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analyze: History / attribution -->
+      <div class="section">
+        <div class="section-head">
+          <div class="left">
+            <span class="section-title">History &amp; HF attribution</span>
+            <span style="color:#6e7575; font-size:12px;">Why HF moves — price vs ramp vs interest vs quota</span>
+          </div>
+          <span class="chev">▾</span>
+        </div>
+        <div class="section-body">
+          <div style="color:#8b9090; font-size:13px;">Per-event decomposition of HF delta, reward claims, governance events affecting this CM, bot triggers. Collapsed in this sketch.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ====== RIGHT (manage ~25%) ====== -->
+    <aside>
+      <div class="manage">
+        <h2>Manage</h2>
+        <div class="tabs">
+          <button class="tab on">Supply</button>
+          <button class="tab">Withdraw</button>
+        </div>
+
+        <!-- Amount -->
+        <div class="input-card">
+          <div class="lab-row">
+            <span>You deposit</span>
+            <span>Wallet: 3.24 WETH <span class="max">MAX</span></span>
+          </div>
+          <div class="input-row">
+            <input value="2.0" />
+            <div class="token-pill"><span class="dot-t"></span>WETH</div>
+          </div>
+        </div>
+
+        <!-- Leverage slider -->
+        <div class="lev">
+          <div class="lev-head">
+            <div>
+              <div class="lab">Target leverage</div>
+              <div style="color:#8b9090; font-size:11px; margin-top:4px;">Max 9× · drag to adjust</div>
+            </div>
+            <div class="cur">5.8×</div>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-track">
+              <div class="slider-fill"></div>
+              <div class="slider-thumb"></div>
+            </div>
+            <div class="slider-ticks">
+              <span>1×</span><span>3×</span><span>5×</span><span>7×</span><span>9×</span>
+            </div>
+          </div>
+          <div class="lev-warn">⚠︎ Above 7×, HF starts below 1.3 — watch for LT ramp</div>
+        </div>
+
+        <!-- Before / After -->
+        <div class="ba-label">Before → After</div>
+        <div class="ba">
+          <div class="ba-row">
+            <span class="lab">Equity</span>
+            <span class="from">9.81 WETH</span>
+            <span class="arrow">→</span>
+            <span class="to pos">11.81 WETH</span>
+          </div>
+          <div class="ba-row">
+            <span class="lab">Position size</span>
+            <span class="from">87.3 WETH</span>
+            <span class="arrow">→</span>
+            <span class="to">68.5 WETH</span>
+          </div>
+          <div class="ba-row">
+            <span class="lab">Net APY</span>
+            <span class="from">23.4%</span>
+            <span class="arrow">→</span>
+            <span class="to neg">18.1%</span>
+          </div>
+          <div class="ba-row">
+            <span class="lab">Health factor</span>
+            <span class="from">1.42</span>
+            <span class="arrow">→</span>
+            <span class="to pos">1.68</span>
+          </div>
+          <div class="ba-row">
+            <span class="lab">Exit cost</span>
+            <span class="from">72 bps</span>
+            <span class="arrow">→</span>
+            <span class="to">58 bps</span>
+          </div>
+        </div>
+
+        <button class="cta">Preview &amp; sign</button>
+        <button class="cta ghost">Cancel</button>
+
+        <div class="meta-rows">
+          <div class="mr"><span>Est. gas</span><span class="v">$4.20</span></div>
+          <div class="mr"><span>Slippage tolerance</span><span class="v">0.5%</span></div>
+          <div class="mr"><span>Exchange rate</span><span class="v">1 WETH ≈ 8.9 ETH+</span></div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <strong>Sketch notes.</strong> Left pane = the unified Position template from <code>§3</code> of the flow spec: sticky KPI strip (Equity · Net APY · Safety · P&amp;L) → Glance layer (three mega-questions in fixed priority) → outcome-verb Act CTAs → Analyze accordions (yield decomposition · exposure chain · curator &amp; change log · exit · history/attribution). Right pane = Manage: Supply/Withdraw tabs, amount, leverage slider with inline warning, unified Before→After component backed by <code>TransactionPreview</code>. Swapping this strategy for a pool position would hide the leverage slider and replace HF with the pool safety renderer — everything else stays identical.
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -9,6 +9,7 @@
 This document maps every LP loss vector in Gearbox Protocol V3 to its exact on-chain mechanism, contract state, events, and the data points an agent needs to monitor.
 
 **Key Architecture**:
+
 - **PoolV3** (ERC-4626): Holds LP deposits, lends to Credit Managers
 - **CreditManagerV3**: Core accounting for credit accounts
 - **CreditFacadeV3**: User-facing interface, safety circuit breaker
@@ -48,7 +49,8 @@ if (loss > 0) {
 }
 ```
 
-4. **CreditFacadeV3** tracks cumulative loss:
+1. **CreditFacadeV3** tracks cumulative loss:
+
 ```solidity
 // In CreditFacadeV3 after liquidation:
 lossParams.currentCumulativeLoss += uint128(reportedLoss);
@@ -115,6 +117,7 @@ const coverageRatio = insuranceValueInUnderlying / totalBorrowed;
 ### Mechanism
 
 When a CreditFacade is paused:
+
 - **New borrowing is blocked** (openCreditAccount reverts)
 - **Existing positions remain open** with accruing interest
 - **Liquidations still work** via `EMERGENCY_LIQUIDATOR` role
@@ -201,6 +204,7 @@ PoolV3 ──┬── CreditManagerV3 (Tier 1 USDC) ── CreditFacadeV3
 ```
 
 **Debt tracking is dual-layered**:
+
 ```solidity
 // PoolV3 state:
 DebtParams internal _totalDebt;                              // Aggregate across ALL CMs
@@ -208,6 +212,7 @@ mapping(address => DebtParams) internal _creditManagerDebt;  // Per-CM tracking
 ```
 
 Each DebtParams has:
+
 ```solidity
 struct DebtParams {
     uint128 borrowed;  // Current principal outstanding
@@ -311,6 +316,7 @@ After adapter calls (external protocol interactions), collateral is valued using
 ### Loss Policy (V3.1+)
 
 When liquidation would create bad debt:
+
 1. Normal: Liquidate at market price
 2. If loss: LossPolicy can reprice collateral using an "aliased" (fundamental) price
 3. This prevents cascading liquidations but may delay loss recognition
@@ -383,6 +389,7 @@ PoolV3 ← PoolQuotaKeeperV3 ← GaugeV3 or TumblerV3 (rate keeper)
 ```
 
 **Key concepts**:
+
 - A **quota** is the max underlying-denominated value a credit account claims is backed by a specific token
 - Quotas are per-account AND aggregated per-pool (via `totalQuoted`)
 - Each token has a **quota rate** (extra APR on top of base rate)

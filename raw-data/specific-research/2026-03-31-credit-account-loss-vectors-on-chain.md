@@ -11,6 +11,7 @@
 **Contracts:** `CreditFacadeV3.sol`, `CreditManagerV3.sol`, `CreditLogic.sol`
 
 **Entry point:**
+
 ```solidity
 // CreditFacadeV3
 function liquidateCreditAccount(
@@ -22,6 +23,7 @@ function liquidateCreditAccount(
 ```
 
 **Core math (CreditLogic.calcLiquidationPayments):**
+
 ```
 totalFunds = totalValue * liquidationDiscount / PERCENTAGE_FACTOR
 liabilities = totalDebt (principal + interest + quotaFees) + DAO_liquidation_fee
@@ -40,6 +42,7 @@ liabilities = totalDebt (principal + interest + quotaFees) + DAO_liquidation_fee
 ```
 
 **Fee parameters (all in bps, read via `creditManager.fees()`):**
+
 | Parameter | Description |
 |-----------|-------------|
 | `feeLiquidation` | DAO fee on liquidated value (e.g., 200 = 2%) |
@@ -53,6 +56,7 @@ liabilities = totalDebt (principal + interest + quotaFees) + DAO_liquidation_fee
 ### Partial Liquidation (Deleverage) — V3
 
 **Entry point:**
+
 ```solidity
 // CreditFacadeV3
 function partiallyLiquidateCreditAccount(
@@ -68,6 +72,7 @@ function partiallyLiquidateCreditAccount(
 **When triggered:** A bot (with special permissions from DAO) executes when HF drops below `minHF` (configurable, e.g., 1.05) but is typically still > 1. This is a "soft" liquidation — the account stays open.
 
 **Configuration (in PartialLiquidationBotV3):**
+
 | Parameter | Description |
 |-----------|-------------|
 | `minHF` | Threshold to trigger partial liquidation (e.g., 10500 = 1.05) |
@@ -75,6 +80,7 @@ function partiallyLiquidateCreditAccount(
 | `PremiumScale` | % of full liquidation premium charged (e.g., 50%) |
 
 **Math:**
+
 ```solidity
 function _calcPartialLiquidationPayments(
     uint256 amount,   // repaid amount in underlying
@@ -82,6 +88,7 @@ function _calcPartialLiquidationPayments(
     bool isExpired
 ) returns (repaidAmount, feeAmount, seizedAmount)
 ```
+
 - Liquidator provides underlying → repays debt
 - Protocol seizes equivalent collateral + scaled premium + fee
 - Post-liquidation: account must pass collateral check (HF >= 1)
@@ -94,6 +101,7 @@ function _calcPartialLiquidationPayments(
 **Check:** `_isExpired()` returns true if `expirable && block.timestamp >= expirationDate`.
 
 **Differences from standard liquidation:**
+
 - Uses `feeLiquidationExpired` and `liquidationPremiumExpired` (lower premiums)
 - Any account can be liquidated after expiration regardless of HF
 - No new accounts can be opened after expiration
@@ -102,6 +110,7 @@ function _calcPartialLiquidationPayments(
 ### Liquidation State Check
 
 **On-chain reads to determine if liquidatable:**
+
 ```solidity
 // Option 1: Direct check
 bool liquidatable = creditManager.isLiquidatable(creditAccount, 10000); // 10000 = 100% HF
@@ -120,6 +129,7 @@ bool isExpired = creditFacade.expirationDate() > 0
 ```
 
 **Events to index:**
+
 - `LiquidateCreditAccount(address indexed creditAccount, address indexed liquidator)`
 - `PartiallyLiquidateCreditAccount(address indexed creditAccount, address indexed token, uint256 repaidAmount, uint256 seizedAmount)`
 - `IncurUncoveredLoss(address indexed pool, uint256 loss)` — bad debt event
@@ -134,6 +144,7 @@ bool isExpired = creditFacade.expirationDate() > 0
 **Interface:** `IPriceOracleV3.sol`
 
 **Key functions:**
+
 ```solidity
 interface IPriceOracleV3 {
     function getPrice(address token) external view returns (uint256);
@@ -148,11 +159,13 @@ interface IPriceOracleV3 {
 ```
 
 **Dual-feed architecture:**
+
 - **Main feed**: Used for account value calculation during liquidation checks
 - **Reserve feed**: Used for "safe price" = `min(mainFeedPrice, reserveFeedPrice)`
 - Safe prices kick in when multicall includes collateral withdrawal or external adapter calls
 
 **PriceFeedParams struct:**
+
 ```solidity
 struct PriceFeedParams {
     address priceFeed;        // Price feed contract address
@@ -167,6 +180,7 @@ struct PriceFeedParams {
 **Example: wstETH/USD = wstETH/stETH * stETH/ETH * ETH/USD**
 
 Gearbox uses modular feed contracts:
+
 - **Composite feed**: Multiplies 2 feeds (e.g., Feed1 * Feed2)
   - Deploy with Feed1 = wstETH/ETH exchange rate, Feed2 = ETH/USD Chainlink
 - **Bounded feed**: Applies min/max bounds to prevent manipulation
@@ -179,6 +193,7 @@ Gearbox uses modular feed contracts:
 CAPO = applying upper bounds to oracle prices to protect against price manipulation.
 
 **How it works:**
+
 - Bounded price feed wraps an underlying feed
 - Sets min/max bounds on the reported price
 - If underlying feed reports price above bound, bounded feed caps it
@@ -186,12 +201,14 @@ CAPO = applying upper bounds to oracle prices to protect against price manipulat
 - Protects borrowers from unfair liquidations (price spikes)
 
 **Configuration per feed in Price Feed Store (PFS):**
+
 - `bound`: Maximum allowed price relative to some reference
 - Updated periodically by governance
 
 ### Oracle Freshness/Staleness Check
 
 **Agent check:**
+
 ```solidity
 PriceFeedParams memory params = oracle.priceFeedParams(token);
 uint32 stalenessPeriod = params.stalenessPeriod;
@@ -258,20 +275,24 @@ function getQuotaAndOutstandingInterest(address creditAccount, address token) re
 ### Quota Rates (Gauge Votes)
 
 **GaugeV3 (voting model):**
+
 ```
 quotaRate = (minRate * VotesDOWN + maxRate * VotesUP) / VotesTOTAL
 ```
+
 - GEAR stakers vote UP (higher rate) or DOWN (lower rate)
 - New epochs start every Monday 12:00 UTC (7-day epochs)
 - Rates only take effect when `updateRates()` is called
 
 **TumblerV3 (curator model):**
+
 - Curator directly sets rates via `setRate(address token, uint16 rate)`
 - Epoch-based to prevent frequent manipulation
 
 ### Quota Limit Reached
 
 When `totalQuoted >= limit`:
+
 - `QuotaIsOutOfBoundsException` is thrown for any transaction increasing that quota
 - Existing positions are NOT affected (no forced reduction)
 - Users cannot increase their quota for that token
@@ -285,6 +306,7 @@ When `totalQuoted >= limit`:
 - Interest is tracked per-account in `cumulativeQuotaInterest` field
 
 ### Events to Index
+
 - `SetTokenLimit(address indexed token, uint96 limit)`
 - `UpdateRates()` (on gauge/tumbler)
 - `UpdateQuota(address indexed creditAccount, address indexed token, int96 quotaChange)`
@@ -298,6 +320,7 @@ When `totalQuoted >= limit`:
 **Base contract:** `AbstractAdapter.sol`
 
 Every adapter has:
+
 - `creditManager` — the CM it's registered with (immutable)
 - `targetContract` — the external protocol contract (e.g., Uniswap Router)
 - `creditFacadeOnly` modifier — ensures calls only during multicall
@@ -305,6 +328,7 @@ Every adapter has:
 - `_execute(bytes calldata)` — calls target from CA via CM
 
 **Adapter ↔ CM connection:**
+
 ```solidity
 // CreditManagerV3
 function contractToAdapter(address targetContract) returns (address adapter);
@@ -331,6 +355,7 @@ function forbidAdapter(address adapter) external;
 ```
 
 **What happens:**
+
 - Adapter AND its target contract are removed from the allowed list
 - `ForbidAdapter(targetContract, adapter)` event emitted
 - Tokens already held via that adapter remain on the CA
@@ -345,6 +370,7 @@ function forbidAdapter(address adapter) external;
 - Forbidden tokens (via `forbidToken`) can still be held but trigger restrictions
 
 ### Events
+
 - `AllowAdapter(address indexed targetContract, address indexed adapter)`
 - `ForbidAdapter(address indexed targetContract, address indexed adapter)`
 
@@ -357,11 +383,13 @@ function forbidAdapter(address adapter) external;
 **Contract:** `CreditConfiguratorV3.sol`, `CreditManagerV3.sol`
 
 **Immediate change:**
+
 ```solidity
 function setLiquidationThreshold(address token, uint16 liquidationThreshold) external;
 ```
 
 **Gradual ramping:**
+
 ```solidity
 function rampLiquidationThreshold(
     address token,
@@ -372,6 +400,7 @@ function rampLiquidationThreshold(
 ```
 
 **On-chain state (CollateralTokenData struct in CM):**
+
 ```solidity
 struct CollateralTokenData {
     address token;
@@ -395,6 +424,7 @@ function allowToken(address token) external;  // reverses forbid
 ```
 
 **Effects of forbidding a token:**
+
 - Token gets added to `forbiddenTokensMask` in CreditManagerV3
 - Accounts with enabled forbidden tokens face restrictions:
   - `ForbiddenTokensException` thrown if trying to increase debt
@@ -411,12 +441,14 @@ function setDebtLimits(uint128 newMinDebt, uint128 newMaxDebt) external;
 ```
 
 **State variables (in CreditFacadeV3):**
+
 ```solidity
 DebtLimits public debtLimits;  // { minDebt, maxDebt }
 uint8 public maxDebtPerBlockMultiplier;  // max new debt per block = maxDebt * multiplier
 ```
 
 **Pool-level:**
+
 ```solidity
 // PoolV3
 function creditManagerDebtParams(address cm) returns (uint128 borrowed, uint128 limit);
@@ -426,6 +458,7 @@ function creditManagerDebtParams(address cm) returns (uint128 borrowed, uint128 
 **Validation:** minDebt <= maxDebt. After any debt change, account debt must be 0 or in [minDebt, maxDebt].
 
 ### Events for Parameter Changes
+
 ```solidity
 event SetLiquidationThreshold(address indexed token, uint16 liquidationThreshold);
 event ScheduleTokenLiquidationThresholdRamp(
@@ -468,6 +501,7 @@ Where:
 ```
 
 In code (basis points, 10000 = 100%):
+
 ```solidity
 uint256 healthFactor = (cdd.twvUSD * 10000) / cdd.totalDebtUSD;
 // HF >= 10000 means healthy, < 10000 means liquidatable
@@ -476,6 +510,7 @@ uint256 healthFactor = (cdd.twvUSD * 10000) / cdd.totalDebtUSD;
 ### Weighted Collateral Value Calculation
 
 For each enabled token:
+
 ```solidity
 // CollateralLogic.calcOneTokenCollateral
 function calcOneTokenCollateral(
@@ -494,6 +529,7 @@ function calcOneTokenCollateral(
 ```
 
 **Key points:**
+
 - `valueUSD`: Full USD value (8 decimals)
 - `weightedValueUSD`: After LT discount AND quota cap
 - Underlying token: always enabled (mask=1), uses `ltUnderlying`, NO quota cap
@@ -543,6 +579,7 @@ bool isLiquidatable = creditManager.isLiquidatable(creditAccount, 10000);
 ```
 
 **SDK (from agent-demo):**
+
 ```typescript
 const data = await caService.getCreditAccountData(caAddress);
 // data.healthFactor, data.totalValueUSD, data.totalDebtUSD, data.twvUSD
@@ -557,6 +594,7 @@ const data = await caService.getCreditAccountData(caAddress);
 **Contract:** `BotListV3.sol`
 
 **Key state:**
+
 ```solidity
 struct BotInfo {
     bool forbidden;
@@ -572,6 +610,7 @@ function activeBots(address creditAccount) returns (address[] memory);
 ```
 
 **Permission bits:**
+
 ```solidity
 ADD_COLLATERAL_PERMISSION    = 1;
 INCREASE_DEBT_PERMISSION     = 1 << 1;
@@ -585,16 +624,19 @@ EXTERNAL_CALLS_PERMISSION    = 1 << 16;
 ```
 
 **Special bot states:**
+
 1. **Forbidden:** DAO calls `forbidBot(address)` → bot cannot call `botMulticall` for ANY account
 2. **Special permissions:** DAO gives a bot permissions for ALL CAs in a CM (e.g., partial liquidation bot)
 
 **Events:**
+
 - `ForbidBot(address indexed bot)`
 - `SetBotPermissions(address indexed bot, address indexed creditAccount, uint192 permissions)`
 
 ### maxCumulativeLoss
 
 **In CreditFacadeV3:**
+
 ```solidity
 // State variables
 uint128 public cumulativeLoss;      // running total of losses from liquidations
@@ -605,6 +647,7 @@ function setCumulativeLossParams(uint128 _maxCumulativeLoss, bool resetCumulativ
 ```
 
 **Mechanism:**
+
 - Every liquidation that incurs a loss (bad debt) adds to `cumulativeLoss`
 - When `cumulativeLoss >= maxCumulativeLoss` → new borrowing is automatically forbidden
 - This is an emergency brake to prevent cascading losses
@@ -613,6 +656,7 @@ function setCumulativeLossParams(uint128 _maxCumulativeLoss, bool resetCumulativ
 ### Loss Policy Contract
 
 **Interface:**
+
 ```solidity
 function setLossPolicy(address newLossPolicy) external; // on CreditConfiguratorV3
 ```
@@ -620,6 +664,7 @@ function setLossPolicy(address newLossPolicy) external; // on CreditConfigurator
 **Purpose:** Determines which liquidations with bad debt are allowed to proceed. If a liquidation would incur loss and the loss policy rejects it, `CreditAccountNotLiquidatableWithLossException` is thrown.
 
 **Loss policy integration:**
+
 - Called during liquidation flow
 - Receives `lossPolicyData` bytes parameter from liquidator
 - Can implement custom logic (e.g., only allow losses up to X, require approval)
@@ -634,6 +679,7 @@ function setLossPolicy(address newLossPolicy) external; // on CreditConfigurator
 ```
 
 **Events:**
+
 - `IncurUncoveredLoss(address indexed pool, uint256 loss)`
 - `SetCumulativeLossParams(uint128 maxCumulativeLoss, bool resetCumulativeLoss)`
 
@@ -651,6 +697,7 @@ function setExpirationDate(uint40 newExpirationDate) external; // configuratorOn
 ```
 
 **On-chain check:**
+
 ```solidity
 function _isExpired() internal view returns (bool) {
     if (!expirable) return false;
@@ -662,6 +709,7 @@ function _isExpired() internal view returns (bool) {
 ### Effects of Expiration
 
 **After expiration:**
+
 1. **All accounts are liquidatable** regardless of HF — using expired fee parameters
 2. **Cannot open new accounts** — `NotAllowedAfterExpirationException`
 3. **Cannot increase debt** — `NotAllowedAfterExpirationException`
@@ -676,6 +724,7 @@ function _isExpired() internal view returns (bool) {
 - Emits `SetExpirationDate(uint40 expirationDate)` event
 
 **Events:**
+
 - `SetExpirationDate(uint40 expirationDate)`
 
 ---
@@ -692,6 +741,7 @@ This limits how many different collateral tokens can be simultaneously enabled o
 ### Where It's Enforced
 
 **In `CreditManagerV3.fullCollateralCheck()`:**
+
 ```solidity
 // After computing all collateral values, check token count
 uint256 enabledTokensCount = BitMask.calcEnabledTokens(enabledTokensMask);
@@ -705,17 +755,20 @@ if (enabledTokensCount > maxEnabledTokens) {
 ### Token Enabling / Disabling
 
 **Enabling:** Happens automatically when:
+
 - Adapter returns token in `tokensToEnable` mask
 - Quota is set for a token (`updateQuota` with positive change)
 - Token received during operations
 
 **Disabling:** Happens when:
+
 - Adapter returns token in `tokensToDisable` mask
 - Token balance drops to 0 or 1 (dust threshold)
 - User explicitly disables via `disableToken(address token)` in multicall
 - `fullCollateralCheck` auto-disables tokens with zero balance
 
 **Bitmask operations:**
+
 ```solidity
 // Each token has a unique mask = 2^index
 uint256 enabledTokensMask = account.enabledTokensMask;

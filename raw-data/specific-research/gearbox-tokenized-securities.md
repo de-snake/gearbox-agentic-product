@@ -32,25 +32,25 @@ the protocol.
 
 ### How It Works in 90 Seconds
 
-1.  An investor opens a Credit Account through the
+1. An investor opens a Credit Account through the
     **SecuritizeKYCFactory**, which verifies eligibility, deploys an
     intermediary wallet, and registers both the wallet and Credit
     Account in Securitize's investor registry.
 
-2.  The investor deposits RWA tokens (tokenized securities) as
+2. The investor deposits RWA tokens (tokenized securities) as
     collateral. The RWA token's own transfer function enforces
     Securitize's whitelist --- only authorized addresses can hold the
     asset.
 
-3.  The protocol's lending pool provides stablecoins to the Credit
+3. The protocol's lending pool provides stablecoins to the Credit
     Account as a loan. Interest accrues automatically.
 
-4.  If the collateral value drops below the required threshold (Health
+4. If the collateral value drops below the required threshold (Health
     Factor \< 1), a liquidator repays the debt and receives collateral.
     The RWA token's transfer restrictions ensure only whitelisted
     liquidators can receive the tokens.
 
-5.  If a court order or sanctions requirement arises, the Securitize
+5. If a court order or sanctions requirement arises, the Securitize
     admin freezes the specific Credit Account. All movement ---
     deposits, withdrawals, liquidation --- halts for that account only.
 
@@ -149,82 +149,82 @@ at the smart contract level.
   Protocol**        provider      Credit Accounts. Enforces KYC. Issue or redeem
                                   collateral thresholds,    tokenized securities. Set
                                   Health Factor reqs, and   compliance rules.
-                                  deterministic             
-                                  liquidation. Provides     
-                                  adapter framework for     
-                                  whitelisted protocol      
-                                  interactions.             
+                                  deterministic
+                                  liquidation. Provides
+                                  adapter framework for
+                                  whitelisted protocol
+                                  interactions.
 
   **Securitize**    Transfer      Issues tokenized          Operate the lending
                     agent & RWA   securities with built-in  protocol. Set collateral
                     issuer        transfer restrictions (DS or leverage parameters.
                                   Token protocol).          Execute liquidations.
-                                  Maintains investor        
-                                  registry. Enforces        
-                                  KYC/AML. Triggers         
-                                  per-account freezes.      
-                                  Reassigns investor        
-                                  ownership.                
+                                  Maintains investor
+                                  registry. Enforces
+                                  KYC/AML. Triggers
+                                  per-account freezes.
+                                  Reassigns investor
+                                  ownership.
 
   **Market          Market config Configures lending market Override Securitize
   Curator**         authority     parameters (collateral    compliance controls.
                                   types, LTV ratios,        Manage individual Credit
                                   interest rate models).    Accounts.
-                                  Registers adapters. Can   
-                                  trigger market-wide       
-                                  pause.                    
+                                  Registers adapters. Can
+                                  trigger market-wide
+                                  pause.
 
   **End Users       Capital       Deposit stablecoins into  Bypass Securitize
   (Investors)**     suppliers &   lending pools to earn     whitelist. Execute
                     borrowers     interest. Open Credit     operations leading to
                                   Accounts through the KYC  undercollateralization.
-                                  Factory to borrow against 
-                                  RWA collateral. Must      
-                                  maintain Health Factor    
-                                  \>= 1 on borrowed         
-                                  positions.                
+                                  Factory to borrow against
+                                  RWA collateral. Must
+                                  maintain Health Factor
+                                  \>= 1 on borrowed
+                                  positions.
 
-  **Liquidators**   Third-party   Monitor Credit Account    Choose liquidation terms
+**Liquidators**   Third-party   Monitor Credit Account    Choose liquidation terms
                     resolution    health. Repay borrower    --- the protocol
                     agents        debt and receive          calculates amounts
                                   collateral at a discount  deterministically.
                                   when Health Factor \< 1.  
-                                  Must be                   
-                                  Securitize-whitelisted.   
+                                  Must be
+                                  Securitize-whitelisted.
   -----------------------------------------------------------------------------------
 
 ### Responsibility Matrix
 
   -----------------------------------------------------------------------------------------
   **Function**   **Gearbox**   **Securitize**   **Curator**   **End       **Liquidators**
-                                                              Users**     
+                                                              Users**
   -------------- ------------- ---------------- ------------- ----------- -----------------
   Credit Account Executes      ---              ---           Initiates   ---
-  deployment                                                  (via        
-                                                              Factory)    
+  deployment                                                  (via
+                                                              Factory)
 
   KYC / identity ---           Owns             ---           Subject to  ---
-  verification                                                            
+  verification
 
   Position       Enforces      ---              Sets          Must        Monitors
-  solvency                                                    satisfy     
-  enforcement                                                             
+  solvency                                                    satisfy
+  enforcement
 
   Liquidation    Engine        Token-level      ---           Subject to  Executes
-  executionе                   whitelist                                  
+  executionе                   whitelist
 
   Per-account    ---           Triggers         ---           Subject to  Blocked
-  freeze                                                                  
+  freeze
 
   Market-wide    Engine        ---              Triggers      Subject to  Subject to
   pause                                                                   (except
                                                                           emergency)
 
   Investor       ---           Executes         ---           Subject to  ---
-  reassign.                                                               
+  reassign.
 
-  Capital        Pool mgmt     ---              ---           Supply &    ---
-  provision                                                   borrow      
+Capital        Pool mgmt     ---              ---           Supply &    ---
+  provision                                                   borrow
   -----------------------------------------------------------------------------------------
 
 ## 4. Securitize Requirements
@@ -244,8 +244,8 @@ at the smart contract level.
                       re-registration by reassigning or destroying
                       positions.
 
-  **Freezes**         Comply with court orders and sanctions by freezing
-                      assets so nothing moves in or out.
+**Freezes**         Comply with court orders and sanctions by freezing
+                      assets so nothing moves in or out
   -----------------------------------------------------------------------
 
 ## 5. How Gearbox Works (Relevant Mechanics)
@@ -267,21 +267,21 @@ In the Securitize integration, account creation flows through the
 **SecuritizeKYCFactory** --- a custom gateway that wraps Gearbox's
 standard process with compliance controls:
 
-1.  Investor calls the KYC Factory to open an account.
+1. Investor calls the KYC Factory to open an account.
 
-2.  The factory deploys an intermediary **SecuritizeWallet** --- a smart
+2. The factory deploys an intermediary **SecuritizeWallet** --- a smart
     contract that will own the Credit Account on behalf of the investor.
     This wallet is created deterministically (via CREATE2) so its
     address is predictable.
 
-3.  The wallet automatically opens a Credit Account through Gearbox's
+3. The wallet automatically opens a Credit Account through Gearbox's
     standard CreditFacade.
 
-4.  The factory registers both the Credit Account address and the wallet
+4. The factory registers both the Credit Account address and the wallet
     address in Securitize's investor registry (via the VaultRegistrar
     interface), linking them to the investor's identity.
 
-5.  Initial operations (deposit collateral, borrow) execute atomically
+5. Initial operations (deposit collateral, borrow) execute atomically
     in the same transaction.
 
 **Why a wallet intermediary?** The investor never interacts with Gearbox
@@ -346,24 +346,24 @@ Account sends stablecoins through the adapter and receives RWA tokens
 When an investor's collateral value drops below the required threshold
 (Health Factor \< 1):
 
-1.  A liquidator triggers liquidation via the protocol.
+1. A liquidator triggers liquidation via the protocol.
 
-2.  The protocol calculates deterministically how much debt must be
+2. The protocol calculates deterministically how much debt must be
     repaid and how much collateral the liquidator receives (based on
     oracle prices, a liquidation discount, and protocol fees). There is
     no auction, no discretionary delay, and no governance intervention
     required.
 
-3.  The liquidator provides stablecoins to repay the debt.
+3. The liquidator provides stablecoins to repay the debt.
 
-4.  Collateral (RWA tokens) is transferred from the Credit Account to
+4. Collateral (RWA tokens) is transferred from the Credit Account to
     the liquidator --- **through the RWA token's own transfer()
     function**, so the liquidator must be Securitize-whitelisted to
     receive the tokens.
 
-5.  The investor retains the Credit Account and any residual assets.
+5. The investor retains the Credit Account and any residual assets.
 
-6.  If the Credit Account is frozen, liquidation is blocked entirely
+6. If the Credit Account is frozen, liquidation is blocked entirely
     (see Freezes below).
 
 ### Market-wide pause (existing Gearbox feature)
@@ -422,12 +422,12 @@ position.
 owner) the ability to **reassign an investor** for any Credit Account.
 When called:
 
-1.  The old investor is unregistered from Securitize's registry for all
+1. The old investor is unregistered from Securitize's registry for all
     tokens held in the position.
 
-2.  The new investor is registered for the same tokens.
+2. The new investor is registered for the same tokens.
 
-3.  The Credit Account and all its assets remain untouched --- only the
+3. The Credit Account and all its assets remain untouched --- only the
     ownership record changes.
 
 This happens in a single transaction. No tokens are burned, minted, or
@@ -440,10 +440,10 @@ assets in a position --- no transfers in, out, or liquidation.
 
 **Solution:** Two-layer enforcement:
 
-1.  **Securitize admin calls setFrozenStatus(account, true)** on the KYC
+1. **Securitize admin calls setFrozenStatus(account, true)** on the KYC
     Factory --- marks that specific Credit Account as frozen.
 
-2.  **The wrapped underlying token (DefaultKYCUnderlying)** checks the
+2. **The wrapped underlying token (DefaultKYCUnderlying)** checks the
     factory on every transfer. If either the sender or receiver is a
     frozen Credit Account, the transfer reverts.
 
@@ -469,9 +469,9 @@ participants in the same market.
   **Who triggers**  Market curator               Securitize admin
 
   **Liquidation**   Blocked (except emergency    Blocked entirely
-                    liquidators)                 
+                    liquidators)
 
-  **Use case**      Protocol emergency           Legal/regulatory hold
+**Use case**      Protocol emergency           Legal/regulatory hold
   -------------------------------------------------------------------------
 
 ## 7. Risk Model & Safeguards
@@ -524,12 +524,12 @@ participants in the same market.
                     during market pause.       positions may persist,
                                                creating bad debt.
 
-  **Regulatory /    Per-account freeze         Regulatory changes could
+**Regulatory /    Per-account freeze         Regulatory changes could
   legal risk**      capability. Investor       make the structure
                     reassignment. Securitize   non-compliant. Freeze
                     as regulated transfer      mechanics block
                     agent.                     liquidation, potentially
-                                               locking bad debt.
+                                               locking bad debt
   ------------------------------------------------------------------------
 
 ## 8. Legal & Structural Clarity
@@ -589,22 +589,22 @@ participants in the same market.
                                                preventing anyone from bypassing
                                                the factory.
 
-  **OnDemandKYCUnderlying**   Wrapped          Same freeze enforcement as
+**OnDemandKYCUnderlying**   Wrapped          Same freeze enforcement as
   (variant)                   underlying with  above, plus automatic liquidity
                               automatic        provision --- a designated
                               liquidity        liquidity provider is notified
                                                on every borrow/repay so capital
-                                               can be supplied just-in-time.
+                                               can be supplied just-in-time
   -----------------------------------------------------------------------------
 
 ## 10. Open Questions & Assumptions
 
 ### Open Questions
 
-1.  **Curator pause + freeze interaction** --- If both are active
+1. **Curator pause + freeze interaction** --- If both are active
     simultaneously, is there any conflict? (Likely not --- freeze is
     strictly more restrictive.)
 
-2.  **Oracle configuration for RWA tokens** --- What oracle source
+2. **Oracle configuration for RWA tokens** --- What oracle source
     provides price feeds for tokenized securities? How are stale or
     manipulated prices handled? *Requires confirmation.*
